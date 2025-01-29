@@ -1,0 +1,136 @@
+pool:
+  vmImage: 'windows-2022'
+
+variables:
+- group: 'code-sign-config'
+- group: 'nuget-package-config'
+- group: 'github-config'
+
+stages:
+
+- stage: BuildAndTest  
+  jobs:
+  - job: 
+    steps:
+    - checkout: self
+      persistCredentials: true
+    - task: DownloadSecureFile@1
+      displayName: 'Download Client Authentication Certificate'
+      name: SM_CLIENT_CERT_FILE
+      inputs:
+        secureFile: ClientCert.p12
+    - task: SSMClientToolsSetup@1
+      displayName: 'Setup DigiCert Tools'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+      inputs:
+        APIKey: '$(SM_API_KEY)'
+    - task: PowerShell@2
+      displayName: 'Prepare DigiCert Code Signing'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+      inputs:
+        targetType: 'inline'
+        script: |
+          $env:PATH += ';C:\Program Files\DigiCert\DigiCert Keylocker Tools'
+          smctl credentials save $(SM_API_KEY) $(SM_CLIENT_CERT_PASSWORD)
+          smksp_cert_sync.exe
+        failOnStderr: true
+        pwsh: true
+    - task: PowerShell@2
+      displayName: 'Get Version Number'
+      inputs:
+        filePath: 'azure-gitversion.ps1'
+        failOnStderr: true
+        pwsh: true
+    - task: Assembly-Info-NetCore@3
+      displayName: 'Apply Assembly Infos'
+      inputs:
+        Path: '$(Build.SourcesDirectory)'
+        FileNames: '**/*.csproj'
+        InsertAttributes: true
+        FileEncoding: 'auto'
+        WriteBOM: false
+        VersionNumber: '$(MajorVersion).$(MinorVersion).$(PatchVersion).$(Build.BuildId)'
+        FileVersionNumber: '$(MajorVersion).$(MinorVersion).$(PatchVersion).$(Build.BuildId)'
+        InformationalVersion: '$(SemVersion)'
+        LogLevel: 'verbose'
+        FailOnWarning: false
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore'
+      inputs:
+        command: 'restore'
+        projects: '*.sln'
+        feedsToUse: 'select'
+        vstsFeed: '340e7a34-33ea-4418-8b72-d55dcb74efa7/dd1a6c3c-4e29-44c2-a80d-9d6c7004ac57'
+    - task: DotNetCoreCLI@2
+      displayName: 'Build'
+      inputs:
+        command: 'build'
+        projects: '*.sln'
+        arguments: '-c $(BuildConfiguration)'
+    - task: DotNetCoreCLI@2
+      displayName: 'Test'
+      inputs:
+        command: 'test'
+        projects: '*.sln'
+        arguments: '-c $(BuildConfiguration)'
+        testRunTitle: 'Perform unit tests'
+    - task: DotNetCoreCLI@2
+      displayName: 'Pack'
+      inputs:
+        command: 'pack'
+        packagesToPack: 'src/OpenCodeList.Net.csproj'
+        nobuild: true
+        versioningScheme: 'byEnvVar'
+        versionEnvVar: 'SemVersion'
+    - task: NuGetCommand@2
+      displayName: 'Sign'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+      env:
+        SM_CLIENT_CERT_FILE : $(SM_CLIENT_CERT_FILE.secureFilePath)
+      inputs:
+        command: 'custom'
+        arguments: 'sign $(Build.ArtifactStagingDirectory)/**/*.nupkg -Timestamper http://timestamp.digicert.com -CertificateFingerprint $(SM_CERT_FINGERPRINT) -HashAlgorithm SHA256 -Verbosity detailed -Overwrite'
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      artifact: drop
+      
+- stage: Deploy
+  jobs:
+  - job: 
+    steps:
+    - download: current
+      artifact: drop
+    - task: NuGetCommand@2
+      displayName: 'Publish preview to internal feed'
+      condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'))
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Pipeline.Workspace)/**/*.nupkg;!$(Pipeline.Workspace)/**/*.symbols.nupkg'
+        nuGetFeedType: 'internal'
+        publishVstsFeed: '340e7a34-33ea-4418-8b72-d55dcb74efa7/dd1a6c3c-4e29-44c2-a80d-9d6c7004ac57'
+    - task: NuGetCommand@2
+      displayName: 'Publish to nuget.org'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Pipeline.Workspace)/**/*.nupkg;!$(Pipeline.Workspace)/**/*.symbols.nupkg'
+        nuGetFeedType: 'external'
+        publishFeedCredentials: 'STUEBER SYSTEMS | nuget.org'
+
+- stage: GitHub
+  jobs:
+  - job: 
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    steps:
+    - checkout: self
+      persistCredentials: true
+    - task: PowerShell@2
+      displayName: 'Push to GitHub'
+      inputs:
+        targetType: 'inline'
+        script: |
+          git remote add github https://$(PAT)@github.com/openpotato/opencodelist.net.git
+          git fetch github
+          git checkout .
+          git push github HEAD:main
+          git push --tags github HEAD:main
+        pwsh: true

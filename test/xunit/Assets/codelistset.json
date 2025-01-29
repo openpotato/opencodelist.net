@@ -1,0 +1,83 @@
+{
+  "$opencodelist": "0.2.0",
+  "$comments": [
+    "This is a comment."
+  ],
+  "codeListSet": {
+    "annotation": {
+      "descriptions": [
+        {
+          "language": "de",
+          "format": "markdown",
+          "content": "Das ist eine **Anmerkung**."
+        },
+        {
+          "language": "en",
+          "format": "markdown",
+          "content": "This is an **annotation**."
+        }
+      ],
+      "appInfo": {
+        "appName": "TestApp",
+        "version": "1.0"
+      }
+    },
+    "identification": {
+      "language": "en",
+      "shortName": "TestCodeListSet",
+      "longName": "A test code list set",
+      "description": "This is a test code list set",
+      "tags": [
+        "tag1",
+        "tag2"
+      ],
+      "version": "2025-01-01",
+      "changeLog": [
+        "Change log entry 1",
+        "Change log entry 2"
+      ],
+      "publisher": {
+        "shortName": "OpenPotato",
+        "longName": "The OpenPotato Project",
+        "identifier": {
+          "value": "42",
+          "source": {
+            "shortName": "TrustMe",
+            "url": "https://www.example.com/trustme"
+          }
+        },
+        "url": "https://openpotato.github.io/opencodelist/"
+      },
+      "publishedAt": "2025-01-01T12:00:00+02:00",
+      "validFrom": "2025-01-01T12:00:00+02:00",
+      "validTo": "2025-12-31T12:00:00+02:00",
+      "canonicalUri": "urn:test:codelistset",
+      "canonicalVersionUri": "urn:test:codelistset:2025-01-01",
+      "locationUrls": [
+        "https://example.com/codelistset-2025-01-01.json"
+      ],
+      "alternateLanguageLocations": [
+        {
+          "language": "de",
+          "url": "https://example.com/codelistset-2025-01-01.de.json"
+        }
+      ],
+      "alternateFormatLocations": [
+        {
+          "mimeType": "text/csv",
+          "url": "https://example.com/codelistset-2025-01-01.csv"
+        }
+      ]
+    },
+    "referenceSet": [
+      {
+        "type": "codeListRef",
+        "canonicalUri": "urn:test:codelist",
+        "canonicalVersionUri": "urn:test:codelist:2025-01-01",
+        "locationUrls": [
+          "https://example.com/codelist-2025-01-01.json"
+        ]
+      }
+    ]
+  }
+}

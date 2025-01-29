@@ -1,0 +1,250 @@
+{
+  "$opencodelist": "0.2.0",
+  "$comments": [
+    "This is a comment."
+  ],
+  "codeList": {
+    "annotation": {
+      "descriptions": [
+        {
+          "language": "de",
+          "format": "markdown",
+          "content": "Das ist eine **Anmerkung**."
+        },
+        {
+          "language": "en",
+          "format": "markdown",
+          "content": "This is an **annotation**."
+        }
+      ],
+      "appInfo": {
+        "appName": "TestApp",
+        "version": "1.0"
+      }
+    },
+    "identification": {
+      "language": "en",
+      "shortName": "TestCodeList",
+      "longName": "A test code list",
+      "description": "This is a test code list",
+      "tags": [
+        "tag1",
+        "tag2"
+      ],
+      "version": "2025-01-01",
+      "changeLog": [
+        "Change log entry 1",
+        "Change log entry 2"
+      ],
+      "publisher": {
+        "shortName": "OpenPotato",
+        "longName": "The OpenPotato Project",
+        "identifier": {
+          "value": "42",
+          "source": {
+            "shortName": "TrustMe",
+            "url": "https://www.example.com/trustme"
+          }
+        },
+        "url": "https://openpotato.github.io/opencodelist/"
+      },
+      "publishedAt": "2025-01-01T12:00:00+02:00",
+      "validFrom": "2025-01-01T12:00:00+02:00",
+      "validTo": "2025-12-31T12:00:00+02:00",
+      "canonicalUri": "urn:test:codelist",
+      "canonicalVersionUri": "urn:test:codelist:2025-01-01",
+      "locationUrls": [
+        "https://example.com/codelist-2025-01-01.json"
+      ],
+      "alternateLanguageLocations": [
+        {
+          "language": "de",
+          "url": "https://example.com/codelist-2025-01-01.de.json"
+        }
+      ],
+      "alternateFormatLocations": [
+        {
+          "mimeType": "text/csv",
+          "url": "https://example.com/codelist-2025-01-01.csv"
+        }
+      ]
+    },
+    "columnSet": {
+      "columns": [
+        {
+          "id": "code",
+          "name": "Code",
+          "type": "string"
+        },
+        {
+          "id": "federalState",
+          "name": "Federal State",
+          "type": "string"
+        },
+        {
+          "id": "integer",
+          "name": "Integer",
+          "type": "integer"
+        },
+        {
+          "id": "number",
+          "name": "Number",
+          "type": "number"
+        },
+        {
+          "id": "enum",
+          "name": "Enum",
+          "type": "enum",
+          "members": [
+            {
+              "value": "e1",
+              "description": "e1 value"
+            },
+            {
+              "value": "e2",
+              "description": "e2 value"
+            },
+            {
+              "value": "e3",
+              "description": "e3 value"
+            }
+          ]
+        },
+        {
+          "id": "enumSet",
+          "name": "Enum Set",
+          "type": "enum-set",
+          "members": [
+            {
+              "value": "e1",
+              "description": "e1 value"
+            },
+            {
+              "value": "e2",
+              "description": "e2 value"
+            },
+            {
+              "value": "e3",
+              "description": "e3 value"
+            }
+          ]
+        },
+        {
+          "id": "bool",
+          "name": "Boolean",
+          "type": "boolean"
+        },
+        {
+          "id": "date",
+          "name": "Date Only",
+          "type": "date"
+        },
+        {
+          "id": "time",
+          "name": "Time Only",
+          "type": "time"
+        },
+        {
+          "id": "datetime",
+          "name": "Date and Time",
+          "type": "date-time"
+        },
+        {
+          "id": "json",
+          "name": "Embedded JSON",
+          "type": "document",
+          "schema": "https://json.schemastore.org/github-action.json"
+        }
+      ],
+      "keys": [
+        {
+          "id": "codeKey",
+          "name": "Primary Key",
+          "columnIds": [
+            "code"
+          ]
+        }
+      ],
+      "defaultKey": {
+        "keyId": "codeKey"
+      },
+      "foreignKeys": [
+        {
+          "id": "foreignKey",
+          "name": "Foreign Key",
+          "columnIds": [
+            "federalState"
+          ],
+          "keyRef": {
+            "codeListRef": {
+              "canonicalUri": "urn:iso:std:iso:3166-2",
+              "canonicalVersionUri": "urn:iso:std:iso:3166-2:2025-01-01",
+              "locationUrls": [
+                "https://raw.githubusercontent.com/openpotato/opencodelist/main/samples/germany.federal-state-codes-2025-01-01.json"
+              ]
+            },
+            "keyId": "codeKey"
+          }
+        }
+      ]
+    },
+    "dataSet": {
+      "rows": [
+        {
+          "code": "c-1",
+          "federalState": "BW",
+          "integer": 42,
+          "number": 41.99,
+          "bool": true,
+          "date": "2024-10-10",
+          "time": "12:00:01",
+          "datetime": "2024-10-10T12:00:00+02:00",
+          "enum": "e1",
+          "enumSet": [
+            "e1",
+            "e3"
+          ],
+          "json": {
+            "property-1": "value-1",
+            "property-2": "value-2"
+          }
+        },
+        {
+          "code": "c-2",
+          "federalState": "BE",
+          "integer": 42,
+          "number": 41.99,
+          "bool": false,
+          "date": "2024-10-10",
+          "time": "12:00:01",
+          "datetime": "2024-10-10T12:00:00+02:00",
+          "enum": "e2",
+          "enumSet": [],
+          "json": {
+            "property-1": "value-1",
+            "property-2": "value-2"
+          }
+        },
+        {
+          "code": "c-3",
+          "federalState": "BB",
+          "integer": 42,
+          "number": 41.99,
+          "bool": true,
+          "date": "2024-10-10",
+          "time": "12:00:00",
+          "datetime": "2024-10-10T12:00:00+02:00",
+          "enum": "e3",
+          "enumSet": [
+            "e2",
+            "e3"
+          ],
+          "json": {
+            "property-1": "value-1",
+            "property-2": "value-2"
+          }
+        }
+      ]
+    }
+  }
+}
