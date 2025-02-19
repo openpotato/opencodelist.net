@@ -3,7 +3,7 @@
 
 # OpenCodeList\.NET
 
-A .NET library for parsing and building OpenCodeList documents. 
+A [.NET](https://dotnet.microsoft.com/) library for parsing and building [OpenCodeList](https://openpotato.github.io/opencodelist/en/) documents. 
 
 + Supports .NET 8 and .NET 9
 + Includes document class for code list documents

@@ -64,12 +64,12 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Returns The supported OpenCodeList version.
+        /// Returns the supported OpenCodeList version.
         /// </summary>
         /// <returns>A OpenCodeList version</returns>
         public static SemanticVersion GetVersion()
         {
-            return new SemanticVersion(0, 2, 0, null);
+            return new SemanticVersion(0, 3, 0, null);
         }
 
         /// <summary>
