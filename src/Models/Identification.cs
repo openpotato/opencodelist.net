@@ -147,7 +147,7 @@ namespace OpenCodeList
             {
                 identification.ValidTo = DateTimeUtils.ParseDateTimeOffset(validToProperty.GetString());
             }
-            if (jsonElement.TryGetStringProperty(PropertyNames.CanonicalUri, out var canonicalUriProperty))
+            if (jsonElement.GetRequiredStringProperty(PropertyNames.CanonicalUri, out var canonicalUriProperty))
             {
                 identification.CanonicalUri = new Uri(canonicalUriProperty.GetString());
             }
@@ -200,8 +200,8 @@ namespace OpenCodeList
             jsonWriter.WriteDateTimeOffsetOrNothing(PropertyNames.PublishedAt, PublishedAt);
             jsonWriter.WriteDateTimeOffsetOrNothing(PropertyNames.ValidFrom, ValidFrom);
             jsonWriter.WriteDateTimeOffsetOrNothing(PropertyNames.ValidTo, ValidTo);
-            jsonWriter.WriteUriOrNothing(PropertyNames.CanonicalUri, CanonicalUri);
-            jsonWriter.WriteUriOrNothing(PropertyNames.CanonicalVersionUri, CanonicalVersionUri);
+            jsonWriter.WriteUri(PropertyNames.CanonicalUri, CanonicalUri);
+            jsonWriter.WriteUri(PropertyNames.CanonicalVersionUri, CanonicalVersionUri);
             jsonWriter.WriteUriArray(PropertyNames.LocationUrls, LocationUrls);
             jsonWriter.WriteLocalizedUriArray(PropertyNames.AlternateLanguageLocations, AlternateLanguageLocations);
             jsonWriter.WriteMimeTypedUriArray(PropertyNames.AlternateFormatLocations, AlternateFormatLocations);

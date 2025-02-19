@@ -55,7 +55,7 @@ namespace OpenCodeList
         {
             jsonWriter.WriteStartObject();
             jsonWriter.WriteString(PropertyNames.Type, TypeConsts.CodeListRef);
-            jsonWriter.WriteUriOrNothing(PropertyNames.CanonicalUri, CanonicalUri);
+            jsonWriter.WriteUri(PropertyNames.CanonicalUri, CanonicalUri);
             jsonWriter.WriteUriOrNothing(PropertyNames.CanonicalVersionUri, CanonicalVersionUri);
             jsonWriter.WriteUriArray(PropertyNames.LocationUrls, LocationUrls);
             jsonWriter.WriteEndObject();

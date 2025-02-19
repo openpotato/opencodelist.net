@@ -44,7 +44,7 @@ namespace OpenCodeList
             if (document != null)
             {
                 jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.OpenCodeList, "0.2.0");
+                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListDocument.GetVersion().ToString());
                 jsonWriter.WriteStringArray(PropertyNames.Comments, document.Comments);
                 jsonWriter.WritePropertyName(PropertyNames.CodeList);
                 jsonWriter.WriteStartObject();
@@ -87,7 +87,7 @@ namespace OpenCodeList
             if (document != null)
             {
                 jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.OpenCodeList, "0.2.0");
+                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListSetDocument.GetVersion().ToString());
                 jsonWriter.WriteStringArray(PropertyNames.Comments, document.Comments);
                 jsonWriter.WritePropertyName(PropertyNames.CodeListSet);
                 jsonWriter.WriteStartObject();
@@ -346,6 +346,7 @@ namespace OpenCodeList
                 publisher.WriteTo(jsonWriter);
             }
         }
+
         public static void WriteReference(this Utf8JsonWriter jsonWriter, string propertyName, KeyRef reference)
         {
             if (reference != null)
@@ -420,6 +421,18 @@ namespace OpenCodeList
             if (value != null)
             {
                 jsonWriter.WriteString(propertyName, value?.ToString("HH:mm:ss", DateTimeFormatInfo.InvariantInfo));
+            }
+        }
+
+        public static void WriteUri(this Utf8JsonWriter jsonWriter, string propertyName, Uri value)
+        {
+            if (value != null)
+            {
+                jsonWriter.WriteString(propertyName, value.ToString());
+            }
+            else
+            {
+                jsonWriter.WriteNull(propertyName);
             }
         }
 
