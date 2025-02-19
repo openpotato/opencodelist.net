@@ -119,12 +119,12 @@ stages:
 - stage: GitHub
   jobs:
   - job: 
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     steps:
     - checkout: self
       persistCredentials: true
     - task: PowerShell@2
       displayName: 'Push to GitHub'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
       inputs:
         targetType: 'inline'
         script: |
