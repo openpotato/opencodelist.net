@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="src/OpenCodeList.Net.csproj" />
+  <Project Path="test/Xunit/OpenCodeList.Net.XUnit.csproj" />
+</Solution>
