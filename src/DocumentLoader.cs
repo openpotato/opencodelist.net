@@ -40,9 +40,7 @@ namespace OpenCodeList
         /// <returns>Either a new <see cref="CodeListDocument"/> or a new <see cref="CodeListSetDocument"/> instance</returns>
         public static Document Load(FileInfo fileInfo)
         {
-            using var fileStream = fileInfo.OpenRead();
-
-            return Load(fileStream);
+            return Load(fileInfo.FullName);
         }
 
         /// <summary>
@@ -78,11 +76,9 @@ namespace OpenCodeList
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A Task representing the asynchronous load operation. Returns either a new <see cref="CodeListDocument"/> or 
         /// a new <see cref="CodeListSetDocument"/> instance</returns>
-        public static async Task<Document> LoadAsync(FileInfo fileInfo, CancellationToken cancellationToken = default)
+        public static Task<Document> LoadAsync(FileInfo fileInfo, CancellationToken cancellationToken = default)
         {
-            using var fileStream = fileInfo.OpenRead();
-
-            return await LoadAsync(fileStream, cancellationToken);
+            return LoadAsync(fileInfo.FullName, cancellationToken);
         }
 
         /// <summary>

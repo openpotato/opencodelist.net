@@ -12,7 +12,7 @@
 namespace OpenCodeList
 {
     /// <summary>
-    /// JSON property values for OpenCodeList
+    /// JSON type values for OpenCodeList
     /// </summary>
     public static class TypeConsts
     {

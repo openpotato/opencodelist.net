@@ -24,6 +24,7 @@ namespace OpenCodeList
     public abstract class Document
     {
         private bool _metaOnly = true;
+        private static readonly JsonWriterOptions _defaultJsonWriterOptions = new() { Indented = true };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Document"/> class.
@@ -98,7 +99,7 @@ namespace OpenCodeList
         /// <param name="stream">The output stream</param>
         public void Save(Stream stream)
         {
-            Save(stream, new JsonWriterOptions { Indented = true });
+            Save(stream, _defaultJsonWriterOptions);
         }
 
         /// <summary>
@@ -122,7 +123,7 @@ namespace OpenCodeList
         {
             using var fileStream = fileInfo.Create();
 
-            Save(fileStream, new JsonWriterOptions { Indented = true });
+            Save(fileStream, _defaultJsonWriterOptions);
         }
 
         /// <summary>
@@ -132,9 +133,7 @@ namespace OpenCodeList
         /// <param name="options">An instance of <see cref="JsonWriterOptions"/> to customize the behaviour when generating JSON </param>
         public void Save(FileInfo fileInfo, JsonWriterOptions options)
         {
-            using var fileStream = fileInfo.Create();
-
-            Save(fileStream, options);
+            Save(fileInfo.FullName, options);
         }
 
         /// <summary>
@@ -145,7 +144,7 @@ namespace OpenCodeList
         {
             using var fileStream = File.Create(filePath);
 
-            Save(fileStream, new JsonWriterOptions { Indented = true });
+            Save(fileStream, _defaultJsonWriterOptions);
         }
 
         /// <summary>
@@ -166,7 +165,7 @@ namespace OpenCodeList
         /// <param name="stream">The output stream</param>
         public void SaveAsMetaOnly(Stream stream)
         {
-            SaveAsMetaOnly(stream, new JsonWriterOptions { Indented = true });
+            SaveAsMetaOnly(stream, _defaultJsonWriterOptions);
         }
 
         /// <summary>
@@ -190,7 +189,7 @@ namespace OpenCodeList
         {
             using var fileStream = fileInfo.Create();
 
-            SaveAsMetaOnly(fileStream, new JsonWriterOptions { Indented = true });
+            SaveAsMetaOnly(fileStream, _defaultJsonWriterOptions);
         }
 
         /// <summary>
@@ -200,9 +199,7 @@ namespace OpenCodeList
         /// <param name="options">An instance of <see cref="JsonWriterOptions"/> to customize the behaviour when generating JSON </param>
         public void SaveAsMetaOnly(FileInfo fileInfo, JsonWriterOptions options)
         {
-            using var fileStream = fileInfo.Create();
-
-            SaveAsMetaOnly(fileStream, options);
+            SaveAsMetaOnly(fileInfo.FullName, options);
         }
 
         /// <summary>
@@ -213,7 +210,7 @@ namespace OpenCodeList
         {
             using var fileStream = File.Create(filePath);
 
-            SaveAsMetaOnly(fileStream, new JsonWriterOptions { Indented = true });
+            SaveAsMetaOnly(fileStream, _defaultJsonWriterOptions);
         }
 
         /// <summary>
@@ -234,9 +231,9 @@ namespace OpenCodeList
         /// <param name="stream">The output stream</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A Task reresenting the asynchronous save operation.</returns>
-        public async Task SaveAsMetaOnlyAsync(Stream stream, CancellationToken cancellationToken = default)
+        public Task SaveAsMetaOnlyAsync(Stream stream, CancellationToken cancellationToken = default)
         {
-            await SaveAsMetaOnlyAsync(stream, new JsonWriterOptions { Indented = true }, cancellationToken);
+            return SaveAsMetaOnlyAsync(stream, _defaultJsonWriterOptions, cancellationToken);
         }
 
         /// <summary>
@@ -265,7 +262,7 @@ namespace OpenCodeList
         {
             using var fileStream = filePath.Create();
 
-            await SaveAsMetaOnlyAsync(fileStream, new JsonWriterOptions { Indented = true }, cancellationToken);
+            await SaveAsMetaOnlyAsync(fileStream, _defaultJsonWriterOptions, cancellationToken);
         }
 
         /// <summary>
@@ -275,11 +272,9 @@ namespace OpenCodeList
         /// <param name="options">An instance of <see cref="JsonWriterOptions"/> to customize the behaviour when generating JSON </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A Task representing the asynchronous save operation.</returns>
-        public async Task SaveAsMetaOnlyAsync(FileInfo fileInfo, JsonWriterOptions options, CancellationToken cancellationToken = default)
+        public Task SaveAsMetaOnlyAsync(FileInfo fileInfo, JsonWriterOptions options, CancellationToken cancellationToken = default)
         {
-            using var fileStream = fileInfo.Create();
-
-            await SaveAsMetaOnlyAsync(fileStream, options, cancellationToken);
+            return SaveAsMetaOnlyAsync(fileInfo.FullName, options, cancellationToken);
         }
 
         /// <summary>
@@ -292,7 +287,7 @@ namespace OpenCodeList
         {
             using var fileStream = File.Create(filePath);
 
-            await SaveAsMetaOnlyAsync(fileStream, new JsonWriterOptions { Indented = true }, cancellationToken);
+            await SaveAsMetaOnlyAsync(fileStream, _defaultJsonWriterOptions, cancellationToken);
         }
 
         /// <summary>
@@ -315,9 +310,9 @@ namespace OpenCodeList
         /// <param name="stream">The output stream</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A Task reresenting the asynchronous save operation.</returns>
-        public async Task SaveAsync(Stream stream, CancellationToken cancellationToken = default)
+        public Task SaveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
-            await SaveAsync(stream, new JsonWriterOptions { Indented = true }, cancellationToken);
+            return SaveAsync(stream, _defaultJsonWriterOptions, cancellationToken);
         }
 
         /// <summary>
@@ -346,7 +341,7 @@ namespace OpenCodeList
         {
             using var fileStream = filePath.Create();
 
-            await SaveAsync(fileStream, new JsonWriterOptions { Indented = true }, cancellationToken);
+            await SaveAsync(fileStream, _defaultJsonWriterOptions, cancellationToken);
         }
 
         /// <summary>
@@ -356,11 +351,9 @@ namespace OpenCodeList
         /// <param name="options">An instance of <see cref="JsonWriterOptions"/> to customize the behaviour when generating JSON </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A Task representing the asynchronous save operation.</returns>
-        public async Task SaveAsync(FileInfo fileInfo, JsonWriterOptions options, CancellationToken cancellationToken = default)
+        public Task SaveAsync(FileInfo fileInfo, JsonWriterOptions options, CancellationToken cancellationToken = default)
         {
-            using var fileStream = fileInfo.Create();
-
-            await SaveAsync(fileStream, options, cancellationToken);
+            return SaveAsync(fileInfo.FullName, options, cancellationToken);
         }
 
         /// <summary>
@@ -373,7 +366,7 @@ namespace OpenCodeList
         {
             using var fileStream = File.Create(filePath);
 
-            await SaveAsync(fileStream, new JsonWriterOptions { Indented = true }, cancellationToken);
+            await SaveAsync(fileStream, _defaultJsonWriterOptions, cancellationToken);
         }
 
         /// <summary>

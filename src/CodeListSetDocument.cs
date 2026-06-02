@@ -52,9 +52,7 @@ namespace OpenCodeList
         /// <param name="fileInfo">The file info</param>
         public static CodeListSetDocument Load(FileInfo fileInfo)
         {
-            using var fileStream = fileInfo.OpenRead();
-
-            return Load(fileStream);
+            return Load(fileInfo.FullName);
         }
 
         /// <summary>
@@ -87,11 +85,9 @@ namespace OpenCodeList
         /// <param name="fileInfo">The file info</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A Task representing the asynchronous load operation.</returns>
-        public static async Task<CodeListSetDocument> LoadAsync(FileInfo fileInfo, CancellationToken cancellationToken = default)
+        public static Task<CodeListSetDocument> LoadAsync(FileInfo fileInfo, CancellationToken cancellationToken = default)
         {
-            using var fileStream = fileInfo.OpenRead();
-
-            return await LoadAsync(fileStream, cancellationToken);
+            return LoadAsync(fileInfo.FullName, cancellationToken);
         }
 
         /// <summary>

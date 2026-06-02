@@ -92,7 +92,7 @@ namespace OpenCodeList
         /// <returns>The new column instance</returns>
         public T Add<T>() where T : Column
         {
-            var column = Activator.CreateInstance(typeof(T), [_document]) as T;
+            var column = Activator.CreateInstance(typeof(T)) as T;
             _columns.Add(column);
             return column;
         }

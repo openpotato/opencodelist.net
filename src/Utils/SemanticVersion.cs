@@ -59,13 +59,44 @@ namespace OpenCodeList
         /// <param name="version">String formatted version</param>
         public static SemanticVersion From(string version)
         {
-            var parts = version.Split('-');
-            var versionNumbers = parts[0].Split('.');
+            var versionSpan = version.AsSpan();
 
-            var major = versionNumbers.Length > 0 ? int.Parse(versionNumbers[0]) : 0;
-            var minor = versionNumbers.Length > 1 ? int.Parse(versionNumbers[1]) : 0;
-            var patch = versionNumbers.Length > 2 ? int.Parse(versionNumbers[2]) : 0;
-            var preRelease = parts.Length > 1 ? parts[1] : null;
+            var firstHyphenIndex = versionSpan.IndexOf('-');
+            var versionNumbersSpan = firstHyphenIndex >= 0 ? versionSpan[..firstHyphenIndex] : versionSpan;
+
+            string preRelease = null;
+            if (firstHyphenIndex >= 0)
+            {
+                var preReleaseSpan = versionSpan[(firstHyphenIndex + 1)..];
+                var secondHyphenIndex = preReleaseSpan.IndexOf('-');
+                preRelease = (secondHyphenIndex >= 0 ? preReleaseSpan[..secondHyphenIndex] : preReleaseSpan).ToString();
+            }
+
+            var major = 0;
+            var minor = 0;
+            var patch = 0;
+
+            var firstDotIndex = versionNumbersSpan.IndexOf('.');
+            if (firstDotIndex < 0)
+            {
+                major = int.Parse(versionNumbersSpan);
+            }
+            else
+            {
+                major = int.Parse(versionNumbersSpan[..firstDotIndex]);
+
+                var remaining = versionNumbersSpan[(firstDotIndex + 1)..];
+                var secondDotIndex = remaining.IndexOf('.');
+                if (secondDotIndex < 0)
+                {
+                    minor = int.Parse(remaining);
+                }
+                else
+                {
+                    minor = int.Parse(remaining[..secondDotIndex]);
+                    patch = int.Parse(remaining[(secondDotIndex + 1)..]);
+                }
+            }
 
             return new SemanticVersion(major, minor, patch, preRelease);
         }
@@ -122,7 +153,7 @@ namespace OpenCodeList
         /// <returns>True, if left is the greater than right; otherwise, false.</returns>
         public static bool operator >(SemanticVersion left, SemanticVersion right)
         {
-            if (right is null) return left != null; 
+            if (right is null) return left != null;
             return left.CompareTo(right) > 0;
         }
 

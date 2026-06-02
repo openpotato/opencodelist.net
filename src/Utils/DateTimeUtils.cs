@@ -20,22 +20,22 @@ namespace OpenCodeList
     public static class DateTimeUtils
     {
         public static readonly string[] DateOnlyFormats =
-        {
+        [
             "yyyy-MM-dd"
-        };
+        ];
 
         public static readonly string[] DateTimeFormats =
-                { 
+        [ 
             "yyyy-MM-dd'T'HH:mm:ss.FFFK",
             "yyyy-MM-dd'T'HH:mm.FFFK",
             "yyyy-MM-dd"
-        };
+        ];
         
         public static readonly string[] TimeOnlyFormats =
-        {
+        [
             "HH:mm:ss",
             "HH:mm"
-        };
+        ];
 
         public static DateOnly ParseDateOnly(string value)
         {

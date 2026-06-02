@@ -30,7 +30,7 @@ namespace OpenCodeList.XUnit
         [Fact]
         public async Task Read_CodeList()
         {
-            var document = await DocumentLoader.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"));
+            var document = await DocumentLoader.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"), TestContext.Current.CancellationToken);
 
             Assert.NotNull(document);
             Assert.True(document is CodeListDocument);
@@ -39,7 +39,7 @@ namespace OpenCodeList.XUnit
         [Fact]
         public async Task Read_CodeListSet()
         {
-            var document = await DocumentLoader.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"));
+            var document = await DocumentLoader.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"), TestContext.Current.CancellationToken);
 
             Assert.NotNull(document);
             Assert.True(document is CodeListSetDocument);

@@ -32,9 +32,90 @@ namespace OpenCodeList.XUnit
         }
 
         [Fact]
+        public async Task Construct_ByCode_Test()
+        {
+            var document = new CodeListDocument();
+
+            document.Identification.ShortName = "ConstructedCodeList";
+            document.Identification.CanonicalUri = new Uri("https://example.com/codelist");
+            document.Identification.CanonicalVersionUri = new Uri("https://example.com/codelist/1.0.0");
+
+            var codeColumn = document.Columns.Add<StringColumn>();
+            codeColumn.Id = "code";
+            codeColumn.Name = "Code";
+
+            var sortOrderColumn = document.Columns.Add<IntegerColumn>();
+            sortOrderColumn.Id = "sortOrder";
+            sortOrderColumn.Name = "Sort Order";
+
+            var key = document.Keys.Add();
+            key.Id = "codeKey";
+            key.Name = "Code Key";
+            key.Columns.Add<StringColumn>().Id = "code";
+
+            document.DefaultKey = key;
+
+            var row = document.Rows.Add();
+            row["code"] = "A";
+            row["sortOrder"] = 1;
+
+            Assert.False(document.MetaOnly);
+            Assert.Equal(2, document.Columns.Count);
+            Assert.Equal(1, document.Keys.Count);
+            Assert.Equal("codeKey", document.DefaultKey.Id);
+            Assert.Equal(1, document.Rows.Count);
+            Assert.Equal("A", document.Rows[0]["code"] as string);
+            Assert.Equal(1, document.Rows[0]["sortOrder"] as int?);
+
+            await using var stream = new MemoryStream();
+
+            await document.SaveAsync(stream, TestContext.Current.CancellationToken);
+
+            stream.Position = 0;
+
+            var loadedDocument = await CodeListDocument.LoadAsync(stream, TestContext.Current.CancellationToken);
+
+            Assert.Equal("ConstructedCodeList", loadedDocument.Identification.ShortName);
+            Assert.Equal(new Uri("https://example.com/codelist"), loadedDocument.Identification.CanonicalUri);
+            Assert.Equal(new Uri("https://example.com/codelist/1.0.0"), loadedDocument.Identification.CanonicalVersionUri);
+            Assert.Equal(2, loadedDocument.Columns.Count);
+            Assert.Equal(1, loadedDocument.Keys.Count);
+            Assert.Equal("codeKey", loadedDocument.DefaultKey.Id);
+            Assert.Equal(1, loadedDocument.Rows.Count);
+            Assert.Equal("A", loadedDocument.Rows[0]["code"] as string);
+            Assert.Equal(1, loadedDocument.Rows[0]["sortOrder"] as int?);
+        }
+
+        [Fact]
+        public async Task Meta_Test()
+        {
+            var originalDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.meta.json"), TestContext.Current.CancellationToken);
+
+            var templateDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"), TestContext.Current.CancellationToken);
+
+            await templateDocument.SaveAsMetaOnlyAsync(Path.Combine(_assetsFolder, "codelist.meta.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }, TestContext.Current.CancellationToken);
+
+            var copiedDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.meta.copy.json"), TestContext.Current.CancellationToken);
+
+            Assert.True(originalDocument.MetaOnly);
+            Assert.True(copiedDocument.MetaOnly);
+            Assert.Equivalent(originalDocument.Comments, copiedDocument.Comments);
+            Assert.Equivalent(originalDocument.Annotation?.Descriptions, copiedDocument.Annotation?.Descriptions);
+            Assert.Equivalent(originalDocument.Annotation?.AppInfo?.ToString(), copiedDocument.Annotation?.AppInfo?.ToString());
+            Assert.Equivalent(originalDocument.Identification, copiedDocument.Identification);
+            Assert.Equivalent(originalDocument.Columns, copiedDocument.Columns);
+            Assert.Equivalent(originalDocument.Keys, copiedDocument.Keys);
+            Assert.Equivalent(originalDocument.DefaultKey, copiedDocument.DefaultKey);
+            Assert.Equivalent(originalDocument.ForeignKeys, copiedDocument.ForeignKeys);
+
+            Assert.Empty(originalDocument.Rows);
+            Assert.Empty(copiedDocument.Rows);
+        }
+
+        [Fact]
         public async Task Read_Test()
         {
-            var document = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"));
+            var document = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"), TestContext.Current.CancellationToken);
 
             Assert.NotNull(document);
             Assert.False(document.MetaOnly);
@@ -70,11 +151,11 @@ namespace OpenCodeList.XUnit
         [Fact]
         public async Task Write_Test()
         {
-            var originalDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"));
+            var originalDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"), TestContext.Current.CancellationToken);
         
-            await originalDocument.SaveAsync(Path.Combine(_assetsFolder, "codelist.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            await originalDocument.SaveAsync(Path.Combine(_assetsFolder, "codelist.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }, TestContext.Current.CancellationToken);
 
-            var copiedDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.copy.json"));
+            var copiedDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.copy.json"), TestContext.Current.CancellationToken);
 
             Assert.Throws<FormatException>(() => { copiedDocument.Rows[0]["bool"] = "string"; });
             Assert.Throws<FormatException>(() => { copiedDocument.Rows[0]["enumSet"] = "string"; });
@@ -101,32 +182,6 @@ namespace OpenCodeList.XUnit
             Assert.Equal(originalDocument.Rows[1]["federalState"] as string, copiedDocument.Rows[1]["federalState"] as string);
             Assert.Equal(originalDocument.Rows[1]["bool"] as bool?, copiedDocument.Rows[1]["bool"] as bool?);
             Assert.Equal(originalDocument.Rows[1]["enumSet"] as List<string>, copiedDocument.Rows[1]["enumSet"] as List<string>);
-        }
-
-        [Fact]
-        public async Task Meta_Test()
-        {
-            var originalDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.meta.json"));
-
-            var templateDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"));
-
-            await templateDocument.SaveAsMetaOnlyAsync(Path.Combine(_assetsFolder, "codelist.meta.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-
-            var copiedDocument = await CodeListDocument.LoadAsync(Path.Combine(_assetsFolder, "codelist.meta.copy.json"));
-
-            Assert.True(originalDocument.MetaOnly);
-            Assert.True(copiedDocument.MetaOnly);
-            Assert.Equivalent(originalDocument.Comments, copiedDocument.Comments);
-            Assert.Equivalent(originalDocument.Annotation?.Descriptions, copiedDocument.Annotation?.Descriptions);
-            Assert.Equivalent(originalDocument.Annotation?.AppInfo?.ToString(), copiedDocument.Annotation?.AppInfo?.ToString());
-            Assert.Equivalent(originalDocument.Identification, copiedDocument.Identification);
-            Assert.Equivalent(originalDocument.Columns, copiedDocument.Columns);
-            Assert.Equivalent(originalDocument.Keys, copiedDocument.Keys);
-            Assert.Equivalent(originalDocument.DefaultKey, copiedDocument.DefaultKey);
-            Assert.Equivalent(originalDocument.ForeignKeys, copiedDocument.ForeignKeys);
-
-            Assert.Empty(originalDocument.Rows);
-            Assert.Empty(copiedDocument.Rows);
         }
     }
 }

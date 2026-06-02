@@ -32,7 +32,7 @@ namespace OpenCodeList.XUnit
         [Fact]
         public async Task Read_Test()
         {
-           var document = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"));
+           var document = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"), TestContext.Current.CancellationToken);
 
             Assert.NotNull(document);
             Assert.False(document.MetaOnly);
@@ -52,11 +52,11 @@ namespace OpenCodeList.XUnit
         [Fact]
         public async Task Write_Test()
         {
-            var originalDocument = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"));
+            var originalDocument = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"), TestContext.Current.CancellationToken);
 
-            await originalDocument.SaveAsync(Path.Combine(_assetsFolder, "codelistset.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            await originalDocument.SaveAsync(Path.Combine(_assetsFolder, "codelistset.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }, TestContext.Current.CancellationToken);
 
-            var copiedDocument = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.copy.json"));
+            var copiedDocument = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.copy.json"), TestContext.Current.CancellationToken);
 
             Assert.False(originalDocument.MetaOnly);
             Assert.Equivalent(originalDocument.Comments, copiedDocument.Comments);
