@@ -84,12 +84,14 @@
         {
           "id": "integer",
           "name": "Integer",
-          "type": "integer"
+          "type": "integer",
+          "nullable": true  
         },
         {
           "id": "number",
           "name": "Number",
-          "type": "number"
+          "type": "number",
+          "nullable": false
         },
         {
           "id": "enum",
@@ -212,7 +214,7 @@
         {
           "code": "c-2",
           "federalState": "BE",
-          "integer": 42,
+          "integer": null,
           "number": 41.99,
           "bool": false,
           "date": "2024-10-10",

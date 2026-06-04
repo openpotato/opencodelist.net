@@ -414,7 +414,7 @@ namespace OpenCodeList
                     }
                     else
                     {
-                        throw new CodeListParserException($"Null value is not a allowed.");
+                        throw new CodeListParserException($"Null value is not allowed.");
                     }
 
                 }

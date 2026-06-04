@@ -84,12 +84,14 @@
         {
           "id": "integer",
           "name": "Integer",
-          "type": "integer"
+          "type": "integer",
+          "nullable": true
         },
         {
           "id": "number",
           "name": "Number",
-          "type": "number"
+          "type": "number",
+          "nullable": false
         },
         {
           "id": "enum",

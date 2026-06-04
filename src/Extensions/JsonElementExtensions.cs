@@ -62,7 +62,7 @@ namespace OpenCodeList
         {
             if (jsonElement.TryGetProperty(propertyName, out value))
             {
-                if (value.ValueKind != JsonValueKind.True || value.ValueKind != JsonValueKind.False)
+                if (value.ValueKind != JsonValueKind.True && value.ValueKind != JsonValueKind.False)
                 {
                     throw new CodeListParserException($"Property \"{propertyName}\" must be a JSON Boolean.");
                 }
