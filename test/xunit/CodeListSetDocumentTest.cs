@@ -24,15 +24,17 @@ namespace OpenCodeList.XUnit
     {
         private readonly string _assetsFolder;
 
-        public CodeListSetDocumentTest(DocumentFixture codeListFixture)
+        public CodeListSetDocumentTest(DocumentFixture _)
         {
             _assetsFolder = DocumentFixture.GetAssetsFolder();
         }
 
         [Fact]
-        public async Task Read_Test()
+        public async Task Load_Reads_All_Expected_Document_Values()
         {
-           var document = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"), TestContext.Current.CancellationToken);
+           var document = await CodeListSetDocument.LoadAsync(
+               Path.Combine(_assetsFolder, "codelistset.json"), 
+               TestContext.Current.CancellationToken);
 
             Assert.NotNull(document);
             Assert.False(document.MetaOnly);
@@ -50,13 +52,20 @@ namespace OpenCodeList.XUnit
         }
 
         [Fact]
-        public async Task Write_Test()
+        public async Task Save_Writes_And_Loads_Equivalent_Document()
         {
-            var originalDocument = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"), TestContext.Current.CancellationToken);
+            var originalDocument = await CodeListSetDocument.LoadAsync(
+                Path.Combine(_assetsFolder, "codelistset.json"), 
+                TestContext.Current.CancellationToken);
 
-            await originalDocument.SaveAsync(Path.Combine(_assetsFolder, "codelistset.copy.json"), new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }, TestContext.Current.CancellationToken);
+            await originalDocument.SaveAsync(
+                Path.Combine(_assetsFolder, "codelistset.copy.json"),
+                new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }, 
+                TestContext.Current.CancellationToken);
 
-            var copiedDocument = await CodeListSetDocument.LoadAsync(Path.Combine(_assetsFolder, "codelistset.copy.json"), TestContext.Current.CancellationToken);
+            var copiedDocument = await CodeListSetDocument.LoadAsync(
+                Path.Combine(_assetsFolder, "codelistset.copy.json"), 
+                TestContext.Current.CancellationToken);
 
             Assert.False(originalDocument.MetaOnly);
             Assert.Equivalent(originalDocument.Comments, copiedDocument.Comments);

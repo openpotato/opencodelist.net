@@ -22,13 +22,13 @@ namespace OpenCodeList.XUnit
     {
         private readonly string _assetsFolder;
 
-        public DocumentLoaderTest(DocumentFixture codeListFixture)
+        public DocumentLoaderTest(DocumentFixture _)
         {
             _assetsFolder = DocumentFixture.GetAssetsFolder();
         }
 
         [Fact]
-        public async Task Read_CodeList()
+        public async Task LoadAsync_Returns_CodeListDocument_For_CodeList_File()
         {
             var document = await DocumentLoader.LoadAsync(Path.Combine(_assetsFolder, "codelist.json"), TestContext.Current.CancellationToken);
 
@@ -37,7 +37,7 @@ namespace OpenCodeList.XUnit
         }
 
         [Fact]
-        public async Task Read_CodeListSet()
+        public async Task LoadAsync_Returns_CodeListSetDocument_For_CodeListSet_File()
         {
             var document = await DocumentLoader.LoadAsync(Path.Combine(_assetsFolder, "codelistset.json"), TestContext.Current.CancellationToken);
 

@@ -284,7 +284,11 @@ namespace OpenCodeList
             {
                 if (_values.TryGetValue(column.Id, out var value))
                 {
-                    if (_document.Columns[cellIndex] is StringColumn)
+                    if (value is null && _document.Columns[cellIndex].Nullable == true)
+                    {
+                        jsonWriter.WriteNull(_document.Columns[cellIndex].Id);
+                    }
+                    else if (_document.Columns[cellIndex] is StringColumn)
                     {
                         if (value is string stringValue)
                         {
