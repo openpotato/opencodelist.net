@@ -7,7 +7,7 @@
     <Company>STÜBER SYSTEMS GmbH</Company>
     <Copyright>© 2026 STÜBER SYSTEMS GmbH</Copyright>
     <Product>OpenCodeList.NET</Product>
-	  <Description>A .NET library for parsing and building OpenCodeList documents</Description>
+    <Description>A .NET library for parsing and building OpenCodeList documents</Description>
     <PackageLicenseUrl></PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
     <NeutralLanguage></NeutralLanguage>
@@ -29,6 +29,10 @@
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Enbrea.SemVer" Version="0.1.0" />
   </ItemGroup>
 
 </Project>

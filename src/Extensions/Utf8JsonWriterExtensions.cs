@@ -44,7 +44,7 @@ namespace OpenCodeList
             if (document != null)
             {
                 jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListDocument.GetVersion().ToString());
+                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListDocument.GetMinimumCompatibleVersion().ToString());
                 jsonWriter.WriteStringArray(PropertyNames.Comments, document.Comments);
                 jsonWriter.WritePropertyName(PropertyNames.CodeList);
                 jsonWriter.WriteStartObject();
@@ -87,7 +87,7 @@ namespace OpenCodeList
             if (document != null)
             {
                 jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListSetDocument.GetVersion().ToString());
+                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListSetDocument.GetMinimumCompatibleVersion().ToString());
                 jsonWriter.WriteStringArray(PropertyNames.Comments, document.Comments);
                 jsonWriter.WritePropertyName(PropertyNames.CodeListSet);
                 jsonWriter.WriteStartObject();

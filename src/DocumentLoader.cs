@@ -9,6 +9,7 @@
  */
 #endregion
 
+using Enbrea.SemVer;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -107,7 +108,7 @@ namespace OpenCodeList
             {
                 if (rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
                 {
-                    if (SemanticVersion.From(versionProperty.GetString()) >= Document.GetVersion())
+                    if (SemanticVersion.From(versionProperty.GetString()) >= Document.GetMinimumCompatibleVersion())
                     {
                         if (rootElement.TryGetProperty(PropertyNames.CodeList, out var codeListProperty))
                         {

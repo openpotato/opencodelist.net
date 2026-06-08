@@ -13,6 +13,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading;
+using Enbrea.SemVer;
 
 namespace OpenCodeList
 {
@@ -125,7 +126,7 @@ namespace OpenCodeList
             {
                 if (rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
                 {
-                    if (SemanticVersion.From(versionProperty.GetString()) < GetVersion())
+                    if (SemanticVersion.From(versionProperty.GetString()) < GetMinimumCompatibleVersion())
                     {
                         throw new CodeListParserException($"Version {versionProperty.GetString()} of OpenCodeList not supported.");
                     }

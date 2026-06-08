@@ -9,9 +9,11 @@
  */
 #endregion
 
+using Enbrea.SemVer;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +27,8 @@ namespace OpenCodeList
     {
         private bool _metaOnly = true;
         private static readonly JsonWriterOptions _defaultJsonWriterOptions = new() { Indented = true };
+        private static readonly SemanticVersion _implementedVersion = new(0, 3, 0, null);
+        private static readonly SemanticVersion _minimumCompatibleVersion = new(0, 3, 0, null);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Document"/> class.
@@ -65,13 +69,27 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Returns the supported OpenCodeList version.
+        /// Returns the implemented OpenCodeList version.
         /// </summary>
-        /// <returns>A OpenCodeList version</returns>
-        public static SemanticVersion GetVersion()
+        /// <returns>An OpenCodeList version</returns>
+        public static SemanticVersion GetImplementedVersion()
         {
-            return new SemanticVersion(0, 3, 0, null);
+            return _implementedVersion;
         }
+
+        /// <summary>
+        /// Returns the minimum compatible OpenCodeList version.
+        /// </summary>
+        /// <returns>An OpenCodeList version</returns>
+        public static SemanticVersion GetMinimumCompatibleVersion()
+        {
+            return _minimumCompatibleVersion;
+        }
+
+        /// <summary>
+        /// The implemented OpenCodeList version as string
+        /// </summary>
+        public string Version { get; } = GetImplementedVersion().ToString();
 
         /// <summary>
         /// Clears the metadata and content of this document instance
