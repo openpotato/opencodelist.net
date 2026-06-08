@@ -10,9 +10,8 @@
     <Description>A .NET library for parsing and building OpenCodeList documents</Description>
     <PackageLicenseUrl></PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
-    <NeutralLanguage></NeutralLanguage>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.1</Version>
+    <Version>0.2.0</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/openpotato/opencodelist.net</RepositoryUrl>

@@ -25,11 +25,10 @@ namespace OpenCodeList
     /// </summary>
     public abstract class Document
     {
-        private bool _metaOnly = true;
         private static readonly JsonWriterOptions _defaultJsonWriterOptions = new() { Indented = true };
         private static readonly SemanticVersion _implementedVersion = new(0, 3, 0, null);
         private static readonly SemanticVersion _minimumCompatibleVersion = new(0, 3, 0, null);
-
+        private bool _metaOnly = true;
         /// <summary>
         /// Initializes a new instance of the <see cref="Document"/> class.
         /// </summary>
@@ -69,6 +68,11 @@ namespace OpenCodeList
         }
 
         /// <summary>
+        /// The implemented OpenCodeList version as string
+        /// </summary>
+        public string Version { get; } = GetImplementedVersion().ToString();
+
+        /// <summary>
         /// Returns the implemented OpenCodeList version.
         /// </summary>
         /// <returns>An OpenCodeList version</returns>
@@ -85,11 +89,6 @@ namespace OpenCodeList
         {
             return _minimumCompatibleVersion;
         }
-
-        /// <summary>
-        /// The implemented OpenCodeList version as string
-        /// </summary>
-        public string Version { get; } = GetImplementedVersion().ToString();
 
         /// <summary>
         /// Clears the metadata and content of this document instance
