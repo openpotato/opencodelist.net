@@ -13,7 +13,6 @@ using Enbrea.SemVer;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,6 +28,7 @@ namespace OpenCodeList
         private static readonly SemanticVersion _implementedVersion = new(0, 3, 0, null);
         private static readonly SemanticVersion _minimumCompatibleVersion = new(0, 3, 0, null);
         private bool _metaOnly = true;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Document"/> class.
         /// </summary>
