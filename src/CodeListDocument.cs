@@ -60,7 +60,8 @@ namespace OpenCodeList
         public Rows Rows { get; }
 
         /// <summary>
-        /// Loads a new code list from a stream. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list from a stream. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="stream">The input stream</param>
         public static CodeListDocument Load(Stream stream)
@@ -71,7 +72,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="fileInfo">The file info</param>
         public static CodeListDocument Load(FileInfo fileInfo)
@@ -80,7 +82,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="filePath">The file path</param>
         public static CodeListDocument Load(string filePath)
@@ -91,7 +94,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list from a stream. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list from a stream. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="stream">The input stream</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
@@ -104,7 +108,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="fileInfo">The file info</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
@@ -115,7 +120,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="filePath">The file path</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
@@ -161,7 +167,7 @@ namespace OpenCodeList
             {
                 if (rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
                 {
-                    if (SemanticVersion.From(versionProperty.GetString()) < GetMinimumCompatibleVersion())
+                    if (SemanticVersion.Parse(versionProperty.GetString()) < GetMinimumCompatibleVersion())
                     {
                         throw new CodeListParserException($"Version {versionProperty.GetString()} of OpenCodeList not supported.");
                     }

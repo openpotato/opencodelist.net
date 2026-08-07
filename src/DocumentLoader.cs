@@ -108,7 +108,7 @@ namespace OpenCodeList
             {
                 if (rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
                 {
-                    if (SemanticVersion.From(versionProperty.GetString()) >= Document.GetMinimumCompatibleVersion())
+                    if (SemanticVersion.Parse(versionProperty.GetString()) >= Document.GetMinimumCompatibleVersion())
                     {
                         if (rootElement.TryGetProperty(PropertyNames.CodeList, out var codeListProperty))
                         {

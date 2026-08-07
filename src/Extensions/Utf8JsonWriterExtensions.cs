@@ -382,6 +382,7 @@ namespace OpenCodeList
                 source.WriteTo(jsonWriter);
             }
         }
+
         public static void WriteStringArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<string> list)
         {
             if (list.Count > 0)

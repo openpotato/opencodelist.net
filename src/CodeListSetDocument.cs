@@ -37,8 +37,9 @@ namespace OpenCodeList
         public DocumentRefs DocumentRefs { get; }
 
         /// <summary>
-        /// Loads a new code list set from a stream. The stream data must be formtted according to the OpenCodeList JSON schema specification.
-        /// </summary>
+        /// Loads a new code list set from a stream. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
+        /// /// </summary>
         /// <param name="stream">The input stream</param>
         public static CodeListSetDocument Load(Stream stream)
         {
@@ -48,7 +49,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list set from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="fileInfo">The file info</param>
         public static CodeListSetDocument Load(FileInfo fileInfo)
@@ -57,7 +59,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list set from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="filePath">The file path</param>
         public static CodeListSetDocument Load(string filePath)
@@ -68,7 +71,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list set from a stream. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list set from a stream. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="stream">The input stream</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
@@ -81,7 +85,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list set from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="fileInfo">The file info</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
@@ -92,7 +97,8 @@ namespace OpenCodeList
         }
 
         /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the OpenCodeList JSON schema specification.
+        /// Loads a new code list set from a file. The stream data must be formtted according to the 
+        /// OpenCodeList JSON schema specification.
         /// </summary>
         /// <param name="filePath">The file path</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
@@ -119,14 +125,13 @@ namespace OpenCodeList
         /// </summary>
         /// <param name="rootElement">The JSON document root object</param>
         /// <returns>A new <see cref="CodeListSetDocument"/> instance</returns>
-        /// <exception cref="CodeListParserException">Syntax error</exception>
         internal static CodeListSetDocument Parse(JsonElement rootElement)
         {
             if (rootElement.ValueKind == JsonValueKind.Object)
             {
                 if (rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
                 {
-                    if (SemanticVersion.From(versionProperty.GetString()) < GetMinimumCompatibleVersion())
+                    if (SemanticVersion.Parse(versionProperty.GetString()) < GetMinimumCompatibleVersion())
                     {
                         throw new CodeListParserException($"Version {versionProperty.GetString()} of OpenCodeList not supported.");
                     }
