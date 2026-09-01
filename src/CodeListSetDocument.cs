@@ -4,189 +4,273 @@
  *    
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
- *    Licensed under the MIT License, Version 2.0. 
+ *    Licensed under the MIT License. 
  * 
  */
 #endregion
 
+using Enbrea.SemVer;
+using System;
 using System.IO;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading;
-using Enbrea.SemVer;
+using System.Threading.Tasks;
 
-namespace OpenCodeList
+namespace OpenCodeList;
+
+/// <summary>
+/// A code list set document according to the OpenCodeList specification
+/// </summary>
+public class CodeListSetDocument : CodeListBase
 {
     /// <summary>
-    /// A code list set document according to the OpenCodeList specification
+    /// Initializes a new instance of the <see cref="CodeListSetDocument"/> class.
     /// </summary>
-    public class CodeListSetDocument : Document
+    public CodeListSetDocument()
+        : base()
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CodeListSetDocument"/> class.
-        /// </summary>
-        public CodeListSetDocument()
-            : base()
+        DocumentRefs = new ExternalCodeListBaseRefs(this);
+    }
+
+    /// <summary>
+    /// The list of document references.
+    /// </summary>
+    public ExternalCodeListBaseRefs DocumentRefs { get; }
+
+    /// <summary>
+    /// Loads a new code list set from a stream. The stream data must be formtted according to the 
+    /// OpenCodeList JSON schema specification.
+    /// /// </summary>
+    /// <param name="stream">The input stream</param>
+    public static CodeListSetDocument Load(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        using var jsonDocument = JsonDocument.Parse(stream, default);
+
+        return Parse(jsonDocument.RootElement);
+    }
+
+    /// <summary>
+    /// Loads a new code list set from a file. The stream data must be formtted according to the 
+    /// OpenCodeList JSON schema specification.
+    /// </summary>
+    /// <param name="fileInfo">The file info</param>
+    public static CodeListSetDocument Load(FileInfo fileInfo)
+    {
+        ArgumentNullException.ThrowIfNull(fileInfo);
+
+        return Load(fileInfo.FullName);
+    }
+
+    /// <summary>
+    /// Loads a new code list set from a file. The stream data must be formtted according to the 
+    /// OpenCodeList JSON schema specification.
+    /// </summary>
+    /// <param name="filePath">The file path</param>
+    public static CodeListSetDocument Load(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
+
+        using var fileStream = File.OpenRead(filePath);
+
+        return Load(fileStream);
+    }
+
+    /// <summary>
+    /// Loads a new code list set from a stream. The stream data must be formtted according to the 
+    /// OpenCodeList JSON schema specification.
+    /// </summary>
+    /// <param name="stream">The input stream</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>A Task representing the asynchronous load operation.</returns>
+    public static async Task<CodeListSetDocument> LoadAsync(Stream stream, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        using var jsonDocument = await JsonDocument.ParseAsync(stream, default, cancellationToken);
+
+        return Parse(jsonDocument.RootElement);
+    }
+
+    /// <summary>
+    /// Loads a new code list set from a file. The stream data must be formtted according to the 
+    /// OpenCodeList JSON schema specification.
+    /// </summary>
+    /// <param name="fileInfo">The file info</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>A Task representing the asynchronous load operation.</returns>
+    public static Task<CodeListSetDocument> LoadAsync(FileInfo fileInfo, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fileInfo);
+
+        return LoadAsync(fileInfo.FullName, cancellationToken);
+    }
+
+    /// <summary>
+    /// Loads a new code list set from a file. The stream data must be formtted according to the 
+    /// OpenCodeList JSON schema specification.
+    /// </summary>
+    /// <param name="filePath">The file path</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>A Task representing the asynchronous load operation.</returns>
+    public static async Task<CodeListSetDocument> LoadAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
+
+        using var fileStream = File.OpenRead(filePath);
+
+        return await LoadAsync(fileStream, cancellationToken);
+    }
+
+    /// <summary>
+    /// Clears only the content of this document instance
+    /// </summary>
+    /// <param name="convertToMetaOnly">If TRUE, marks document as meta document</param>
+    public override void ClearContent(bool convertToMetaOnly)
+    {
+        DocumentRefs.Clear();
+        base.ClearContent(convertToMetaOnly);
+    }
+
+    /// <summary>
+    /// Validates the code list set document according to the OpenCodeList specification
+    /// </summary>
+    public override void Validate()
+    {
+        var validator = new CodeListDocumentSetValidator(this);
+        validator.Validate();
+    }
+
+    /// <summary>
+    /// Parses a <see cref="JsonElement"/> object (representing the complete document) into a code list set document
+    /// </summary>
+    /// <param name="rootElement">The JSON document root object</param>
+    /// <returns>A new <see cref="CodeListSetDocument"/> instance</returns>
+    internal static CodeListSetDocument Parse(JsonElement rootElement)
+    {
+        if (rootElement.ValueKind != JsonValueKind.Object)
         {
-            DocumentRefs = new DocumentRefs(this);
+            throw new CodeListParserException("Invalid JSON document.Expected a root object.");
         }
 
-        /// <summary>
-        /// The list of document references.
-        /// </summary>
-        public DocumentRefs DocumentRefs { get; }
-
-        /// <summary>
-        /// Loads a new code list set from a stream. The stream data must be formtted according to the 
-        /// OpenCodeList JSON schema specification.
-        /// /// </summary>
-        /// <param name="stream">The input stream</param>
-        public static CodeListSetDocument Load(Stream stream)
+        if (!rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
         {
-            var jsonDocument = JsonDocument.Parse(stream, default);
-
-            return Parse(jsonDocument.RootElement);
+            throw new CodeListParserException($"Required JSON property '{PropertyNames.OpenCodeList}' is missing.");
         }
 
-        /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the 
-        /// OpenCodeList JSON schema specification.
-        /// </summary>
-        /// <param name="fileInfo">The file info</param>
-        public static CodeListSetDocument Load(FileInfo fileInfo)
+        if (versionProperty.ValueKind != JsonValueKind.String)
         {
-            return Load(fileInfo.FullName);
+            throw new CodeListParserException($"JSON property '{PropertyNames.OpenCodeList}' must be a string.");
         }
 
-        /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the 
-        /// OpenCodeList JSON schema specification.
-        /// </summary>
-        /// <param name="filePath">The file path</param>
-        public static CodeListSetDocument Load(string filePath)
-        {
-            using var fileStream = File.OpenRead(filePath);
+        var versionString = versionProperty.GetString();
 
-            return Load(fileStream);
+        if (string.IsNullOrWhiteSpace(versionString))
+        {
+            throw new CodeListParserException($"JSON property '{PropertyNames.OpenCodeList}' must not be empty.");
         }
 
-        /// <summary>
-        /// Loads a new code list set from a stream. The stream data must be formtted according to the 
-        /// OpenCodeList JSON schema specification.
-        /// </summary>
-        /// <param name="stream">The input stream</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A Task representing the asynchronous load operation.</returns>
-        public static async Task<CodeListSetDocument> LoadAsync(Stream stream, CancellationToken cancellationToken = default)
+        SemanticVersion version;
+        try
         {
-            var jsonDocument = await JsonDocument.ParseAsync(stream, default, cancellationToken);
-
-            return Parse(jsonDocument.RootElement);
+            version = SemanticVersion.Parse(versionString);
+        }
+        catch (Exception ex)
+        {
+            throw new CodeListParserException($"Invalid OpenCodeList version '{versionString}'.", ex);
         }
 
-        /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the 
-        /// OpenCodeList JSON schema specification.
-        /// </summary>
-        /// <param name="fileInfo">The file info</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A Task representing the asynchronous load operation.</returns>
-        public static Task<CodeListSetDocument> LoadAsync(FileInfo fileInfo, CancellationToken cancellationToken = default)
+        if (!SupportedVersionRange.Satisfies(version))
         {
-            return LoadAsync(fileInfo.FullName, cancellationToken);
+            throw new CodeListParserException($"OpenCodeList version '{version}' is not supported.");
         }
 
-        /// <summary>
-        /// Loads a new code list set from a file. The stream data must be formtted according to the 
-        /// OpenCodeList JSON schema specification.
-        /// </summary>
-        /// <param name="filePath">The file path</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A Task representing the asynchronous load operation.</returns>
-        public static async Task<CodeListSetDocument> LoadAsync(string filePath, CancellationToken cancellationToken = default)
+        if (!rootElement.GetRequiredObjectProperty(PropertyNames.CodeListSet, out var codeListSetProperty))
         {
-            using var fileStream = File.OpenRead(filePath);
-
-            return await LoadAsync(fileStream, cancellationToken);
+            throw new CodeListParserException($"Required JSON property '{PropertyNames.CodeListSet}' is missing.");
         }
 
-        /// <summary>
-        /// Clears only the content of this document instance
-        /// </summary>
-        /// <param name="convertToMetaOnly">If TRUE, marks document as meta document</param>
-        public override void ClearContent(bool convertToMetaOnly)
+        return ParseContent(rootElement, codeListSetProperty);
+    }
+
+    /// <summary>
+    /// Parses a <see cref="JsonElement"/> object (representing the inner part of the document) into a code list set document
+    /// </summary>
+    /// <param name="rootElement">The JSON document root object</param>
+    /// <param name="codeListSetElement">The JSON sub object for the code list set</param>
+    /// <returns>A new <see cref="CodeListSetDocument"/> instance</returns>
+    internal static CodeListSetDocument ParseContent(JsonElement rootElement, JsonElement codeListSetElement)
+    {
+        var document = new CodeListSetDocument();
+
+        ParseComments(document, rootElement);
+        ParseAnnotation(document, codeListSetElement);
+        ParseIdentification(document, codeListSetElement);
+        ParseReferenceSet(document, codeListSetElement);
+
+        return document;
+    }
+
+    /// <summary>
+    /// Parses the annotation from the code list set JSON element and adds it to the code list set document
+    /// </summary>
+    private static void ParseAnnotation(CodeListSetDocument owner, JsonElement codeListSetElement)
+    {
+        if (!codeListSetElement.TryGetObjectProperty(PropertyNames.Annotation, out var annotationElement))
         {
-            DocumentRefs.Clear();
-            base.ClearContent(convertToMetaOnly);
+            return;
         }
 
-        /// <summary>
-        /// Parses a <see cref="JsonElement"/> object (representing the complete document) into a code list set document
-        /// </summary>
-        /// <param name="rootElement">The JSON document root object</param>
-        /// <returns>A new <see cref="CodeListSetDocument"/> instance</returns>
-        internal static CodeListSetDocument Parse(JsonElement rootElement)
+        owner.Annotation = JsonSerializer.Deserialize<Annotation>(annotationElement, JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Parses the comments from the code list set JSON element and adds them to the code list set document
+    /// </summary>
+    private static void ParseComments(CodeListSetDocument owner, JsonElement codeListSetElement)
+    {
+        if (!codeListSetElement.TryGetArrayProperty(PropertyNames.Comments, out var commentsElement))
         {
-            if (rootElement.ValueKind == JsonValueKind.Object)
+            return;
+        }
+
+        foreach (var element in commentsElement.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.String)
             {
-                if (rootElement.TryGetProperty(PropertyNames.OpenCodeList, out var versionProperty))
-                {
-                    if (SemanticVersion.Parse(versionProperty.GetString()) < GetMinimumCompatibleVersion())
-                    {
-                        throw new CodeListParserException($"Version {versionProperty.GetString()} of OpenCodeList not supported.");
-                    }
-                }
-                else
-                {
-                    throw new CodeListParserException($"JSON Property \"{PropertyNames.OpenCodeList}\" missing.");
-                }
+                throw new CodeListParserException($"Invalid JSON element in '{PropertyNames.Comments}'. Expected a string.");
+            }
 
-                if (rootElement.GetRequiredObjectProperty(PropertyNames.CodeListSet, out var codeListSetProperty))
-                {
-                    return ParseContent(rootElement, codeListSetProperty);
-                }
-                else
-                {
-                    throw new CodeListParserException($"JSON Property \"{PropertyNames.CodeListSet}\" missing.");
-                }
-            }
-            else
-            {
-                throw new CodeListParserException($"JSON Object expected.");
-            }
+            owner.Comments.Add(element.GetString()!);
         }
+    }
 
-        /// <summary>
-        /// Parses a <see cref="JsonElement"/> object (representing the inner part of the document) into a code list set document
-        /// </summary>
-        /// <param name="rootElement">The JSON document root object</param>
-        /// <param name="codeListSetElement">The JSON sub object for the code list set</param>
-        /// <returns>A new <see cref="CodeListSetDocument"/> instance</returns>
-        internal static CodeListSetDocument ParseContent(JsonElement rootElement, JsonElement codeListSetElement)
+    /// <summary>
+    /// Parses the identification from the code list set JSON element and adds it to the code list set document
+    /// </summary>
+    private static void ParseIdentification(CodeListSetDocument document, JsonElement codeListSetElement)
+    {
+        if (!codeListSetElement.GetRequiredObjectProperty(PropertyNames.Identification, out var identificationElement))
         {
-            var document = new CodeListSetDocument();
-
-            if (rootElement.TryGetArrayProperty(PropertyNames.Comments, out var commentsProperty))
-            {
-                foreach (var commentElement in commentsProperty.EnumerateArray())
-                {
-                    document.Comments.Add(commentElement.GetString());
-                }
-            }
-            if (codeListSetElement.TryGetObjectProperty(PropertyNames.Annotation, out var annotationProperty))
-            {
-                document.Annotation = Annotation.Parse(annotationProperty);
-            }
-            if (codeListSetElement.GetRequiredObjectProperty(PropertyNames.Identification, out var identificationProperty))
-            {
-                document.Identification = Identification.Parse(identificationProperty);
-            }
-            if (codeListSetElement.TryGetArrayProperty(PropertyNames.ReferenceSet, out var documentRefSetProperty))
-            {
-                document.DocumentRefs.ParseAndAdd(documentRefSetProperty);
-            }
-
-            return document;
+            throw new CodeListParserException($"Required JSON property '{PropertyNames.Identification}' is missing.");
         }
+
+        document.Identification = JsonSerializer.Deserialize<Identification>(identificationElement, JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Parses the reference set from the code list set JSON element and adds it to the code list set document
+    /// </summary>
+    private static void ParseReferenceSet(CodeListSetDocument document, JsonElement codeListSetElement)
+    {
+        if (!codeListSetElement.TryGetArrayProperty(PropertyNames.ReferenceSet, out var documentRefSetProperty))
+        {
+            document.MetaOnly = true;
+            return;
+        }
+
+        document.MetaOnly = false;
+        document.DocumentRefs.ParseAndAdd(documentRefSetProperty);
     }
 }

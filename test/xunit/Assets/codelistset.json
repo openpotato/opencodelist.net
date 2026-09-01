@@ -1,5 +1,5 @@
 {
-  "$opencodelist": "0.3.0",
+  "$opencodelist": "0.4.0",
   "$comments": [
     "This is a comment."
   ],
@@ -46,7 +46,8 @@
             "url": "https://www.example.com/trustme"
           }
         },
-        "url": "https://openpotato.github.io/opencodelist/"
+        "url": "https://openpotato.github.io/opencodelist/",
+        "x-contact-email": "info@example.org"
       },
       "publishedAt": "2025-01-01T12:00:00+02:00",
       "validFrom": "2025-01-01T12:00:00+02:00",
@@ -67,7 +68,10 @@
           "mimeType": "text/csv",
           "url": "https://example.com/codelistset-2025-01-01.csv"
         }
-      ]
+      ],
+      "x-test": {
+        "enabled": true
+      }
     },
     "referenceSet": [
       {
@@ -76,6 +80,14 @@
         "canonicalVersionUri": "urn:test:codelist:2025-01-01",
         "locationUrls": [
           "https://example.com/codelist-2025-01-01.json"
+        ]
+      },
+      {
+        "type": "codeListSetRef",
+        "canonicalUri": "urn:test:codelistset:child",
+        "canonicalVersionUri": "urn:test:codelistset:child:2025-01-01",
+        "locationUrls": [
+          "https://example.com/codelistset-child-2025-01-01.json"
         ]
       }
     ]

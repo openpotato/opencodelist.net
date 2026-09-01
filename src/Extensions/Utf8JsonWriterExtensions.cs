@@ -4,459 +4,212 @@
  *    
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
- *    Licensed under the MIT License, Version 2.0. 
+ *    Licensed under the MIT License. 
  * 
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
-namespace OpenCodeList
+namespace OpenCodeList;
+
+/// <summary>
+/// Extensions for <see cref="Utf8JsonWriter"/>
+/// </summary>
+public static class Utf8JsonWriterExtensions
 {
-    /// <summary>
-    /// Extensions for <see cref="Utf8JsonWriter"/>
-    /// </summary>
-    public static class Utf8JsonWriterExtensions
+    public static void WritDocument(this Utf8JsonWriter jsonWriter, CodeListBase document, bool metaOnly)
     {
-        public static void WriteAnnotation(this Utf8JsonWriter jsonWriter, string propertyName, Annotation annotation)
-        {
-            if (annotation != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                annotation.WriteTo(jsonWriter);
-            }
-        }
+        jsonWriter.WriteStartObject();
+        jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListBase.MinimumCompatibleVersion.ToString());
+        jsonWriter.WriteStringArrayOrNothing(PropertyNames.Comments, document.Comments);
+        jsonWriter.WritePropertyName(document is CodeListDocument ? PropertyNames.CodeList : PropertyNames.CodeListSet);
+        jsonWriter.WriteStartObject();
+        jsonWriter.WriteAnnotationOrNothing(PropertyNames.Annotation, document.Annotation);
+        jsonWriter.WriteIdentification(PropertyNames.Identification, document.Identification);
 
-        public static void WriteBooleanOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, bool? value)
+        if (document is CodeListDocument codeListDocument)
         {
-            if (value != null)
+            jsonWriter.WritePropertyName(PropertyNames.ColumnSet);
+            jsonWriter.WriteStartObject();
+            jsonWriter.WriteColumnArray(PropertyNames.Columns, codeListDocument.Columns);
+            jsonWriter.WriteKeyArrayOrNothing(PropertyNames.Keys, codeListDocument.Keys);
+            jsonWriter.WriteDefaultKeyOrNothing(PropertyNames.DefaultKey, codeListDocument.DefaultKey);
+            jsonWriter.WriteForeignKeyArrayOrNothing(PropertyNames.ForeignKeys, codeListDocument.ForeignKeys);
+            jsonWriter.WriteEndObject();
+            if (!metaOnly)
             {
-                jsonWriter.WriteBoolean(propertyName, (bool)value);
-            }
-        }
-
-        public static void WriteCodeListDocument(this Utf8JsonWriter jsonWriter, CodeListDocument document, bool metaOnly)
-        {
-            if (document != null)
-            {
+                jsonWriter.WritePropertyName(PropertyNames.DataSet);
                 jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListDocument.GetMinimumCompatibleVersion().ToString());
-                jsonWriter.WriteStringArray(PropertyNames.Comments, document.Comments);
-                jsonWriter.WritePropertyName(PropertyNames.CodeList);
-                jsonWriter.WriteStartObject();
-                jsonWriter.WriteAnnotation(PropertyNames.Annotation, document.Annotation);
-                jsonWriter.WriteIdentification(PropertyNames.Identification, document.Identification);
-                jsonWriter.WritePropertyName(PropertyNames.ColumnSet);
-                jsonWriter.WriteStartObject();
-                jsonWriter.WriteColumnArray(PropertyNames.Columns, document.Columns);
-                jsonWriter.WriteKeyArray(PropertyNames.Keys, document.Keys);
-                jsonWriter.WriteDefaultKey(PropertyNames.DefaultKey, document.DefaultKey);
-                jsonWriter.WriteForeignKeyArray(PropertyNames.ForeignKeys, document.ForeignKeys);
-                jsonWriter.WriteEndObject();
-                if (!metaOnly)
-                {
-                    jsonWriter.WritePropertyName(PropertyNames.DataSet);
-                    jsonWriter.WriteStartObject();
-                    jsonWriter.WriteRowArray(PropertyNames.Rows, document.Rows);
-                    jsonWriter.WriteEndObject();
-                }
-                jsonWriter.WriteEndObject();
+                jsonWriter.WriteRowArray(PropertyNames.Rows, codeListDocument.Rows);
                 jsonWriter.WriteEndObject();
             }
         }
-
-        public static void WriteCodeListRef(this Utf8JsonWriter jsonWriter, string propertyName, CodeListDocumentRef codeListRef)
+        else if (document is CodeListSetDocument codeListSetDocument)
         {
-            if (codeListRef != null)
+            if (!metaOnly)
             {
-                jsonWriter.WritePropertyName(propertyName);
-                codeListRef.WriteTo(jsonWriter);
-            }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
+                jsonWriter.WriteDocumentRefArrayOrNothing(PropertyNames.ReferenceSet, codeListSetDocument.DocumentRefs);
             }
         }
 
-        public static void WriteCodeListSetDocument(this Utf8JsonWriter jsonWriter, CodeListSetDocument document, bool metaOnly)
-        {
-            if (document != null)
-            {
-                jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.OpenCodeList, CodeListSetDocument.GetMinimumCompatibleVersion().ToString());
-                jsonWriter.WriteStringArray(PropertyNames.Comments, document.Comments);
-                jsonWriter.WritePropertyName(PropertyNames.CodeListSet);
-                jsonWriter.WriteStartObject();
-                jsonWriter.WriteAnnotation(PropertyNames.Annotation, document.Annotation);
-                jsonWriter.WriteIdentification(PropertyNames.Identification, document.Identification);
-                if (!metaOnly)
-                {
-                    jsonWriter.WriteDocumentRefArray(PropertyNames.ReferenceSet, document.DocumentRefs);
-                }
-                jsonWriter.WriteEndObject();
-                jsonWriter.WriteEndObject();
-            }
-        }
+        jsonWriter.WriteEndObject();
+        jsonWriter.WriteEndObject();
+    }
 
-        public static void WriteColumnArray(this Utf8JsonWriter jsonWriter, string propertyName, Columns columns)
+    public static void WriteAnnotationOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Annotation annotation)
+    {
+        if (annotation != null)
         {
-            if (columns.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var column in columns)
-                {
-                    column.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
+            jsonWriter.WritePropertyName(propertyName);
+            JsonSerializer.Serialize(jsonWriter, annotation, CodeListBase.JsonSerializerOptions);
         }
+    }
 
-        public static void WriteColumnIdArray(this Utf8JsonWriter jsonWriter, string propertyName, Columns columns)
+    public static void WriteColumnArray(this Utf8JsonWriter jsonWriter, string propertyName, Columns columns)
+    {
+        jsonWriter.WritePropertyName(propertyName);
+        jsonWriter.WriteStartArray();
+        foreach (var column in columns)
         {
-            if (columns.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var column in columns)
-                {
-                    jsonWriter.WriteStringValue(column.Id);
-                }
-                jsonWriter.WriteEndArray();
-            }
+            JsonSerializer.Serialize(jsonWriter, column, CodeListBase.JsonSerializerOptions);
         }
+        jsonWriter.WriteEndArray();
+    }
 
-        public static void WriteDateOnly(this Utf8JsonWriter jsonWriter, string propertyName, DateOnly? value)
+    public static void WriteColumnRefsArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, ColumnRefs columns)
+    {
+        if (columns.Count > 0)
         {
-            if (value != null)
+            jsonWriter.WritePropertyName(propertyName);
+            jsonWriter.WriteStartArray();
+            foreach (var column in columns)
             {
-                jsonWriter.WriteString(propertyName, value?.ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo));
+                jsonWriter.WriteStringValue(column.Id);
             }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
-            }
+            jsonWriter.WriteEndArray();
         }
+    }
 
-        public static void WriteDateOnlyOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, DateOnly? value)
+    public static void WriteDefaultKeyOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Key defaultKey)
+    {
+        if (defaultKey != null)
         {
-            if (value != null)
-            {
-                jsonWriter.WriteString(propertyName, value?.ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo));
-            }
+            jsonWriter.WritePropertyName(propertyName);
+            jsonWriter.WriteStartObject();
+            jsonWriter.WriteString(PropertyNames.KeyId, defaultKey.Id);
+            jsonWriter.WriteEndObject();
         }
+    }
 
-        public static void WriteDateTimeOffset(this Utf8JsonWriter jsonWriter, string propertyName, DateTimeOffset? value)
+    public static void WriteDocumentRefArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, ExternalCodeListBaseRefs members)
+    {
+        if (members.Count > 0)
         {
-            if (value != null)
+            jsonWriter.WritePropertyName(propertyName);
+            jsonWriter.WriteStartArray();
+            foreach (var member in members)
             {
-                jsonWriter.WriteString(propertyName, value?.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFK", DateTimeFormatInfo.InvariantInfo));
+                JsonSerializer.Serialize(jsonWriter, member, CodeListBase.JsonSerializerOptions);
             }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
-            }
+            jsonWriter.WriteEndArray();
         }
+    }
 
-        public static void WriteDateTimeOffsetOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, DateTimeOffset? value)
+    public static void WriteForeignKeyArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, ForeignKeys foreignkeys)
+    {
+        if (foreignkeys.Count > 0)
         {
-            if (value != null)
+            jsonWriter.WritePropertyName(propertyName);
+            jsonWriter.WriteStartArray();
+            foreach (var foreignkey in foreignkeys)
             {
-                jsonWriter.WriteString(propertyName, value?.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFK", DateTimeFormatInfo.InvariantInfo));
+                foreignkey.WriteTo(jsonWriter);
             }
+            jsonWriter.WriteEndArray();
         }
+    }
 
-        public static void WriteDefaultKey(this Utf8JsonWriter jsonWriter, string propertyName, Key defaultKey)
+    public static void WriteIdentification(this Utf8JsonWriter jsonWriter, string propertyName, Identification identification)
+    {
+        if (identification != null)
         {
-            if (defaultKey != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartObject();
-                jsonWriter.WriteString(PropertyNames.KeyId, defaultKey.Id);
-                jsonWriter.WriteEndObject();
-            }
+            jsonWriter.WritePropertyName(propertyName);
+            JsonSerializer.Serialize(jsonWriter, identification, CodeListBase.JsonSerializerOptions);
         }
-
-        public static void WriteDescriptionArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<Description> descriptions)
+        else
         {
-            if (descriptions.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var member in descriptions)
-                {
-                    member.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
-            }
+            jsonWriter.WriteNull(propertyName);
         }
+    }
 
-        public static void WriteDocumentRefArray(this Utf8JsonWriter jsonWriter, string propertyName, DocumentRefs members)
+    public static void WriteKeyArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Keys keys)
+    {
+        if (keys.Count > 0)
         {
-            if (members.Count > 0)
+            jsonWriter.WritePropertyName(propertyName);
+            jsonWriter.WriteStartArray();
+            foreach (var key in keys)
             {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var member in members)
-                {
-                    member.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
+                key.WriteTo(jsonWriter);
             }
+            jsonWriter.WriteEndArray();
         }
+    }
 
-        public static void WriteEnumMemberArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<EnumMember> members)
+    public static void WriteReference(this Utf8JsonWriter jsonWriter, string propertyName, ExternalKeyRef reference)
+    {
+        if (reference != null)
         {
-            if (members.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var member in members)
-                {
-                    member.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
+            jsonWriter.WritePropertyName(propertyName);
+            JsonSerializer.Serialize(jsonWriter, reference, CodeListBase.JsonSerializerOptions);
         }
-
-        public static void WriteForeignKeyArray(this Utf8JsonWriter jsonWriter, string propertyName, ForeignKeys foreignkeys)
+        else
         {
-            if (foreignkeys.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var foreignkey in foreignkeys)
-                {
-                    foreignkey.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
+            jsonWriter.WriteNull(propertyName);
         }
+    }
 
-        public static void WriteIdentification(this Utf8JsonWriter jsonWriter, string propertyName, Identification identification)
+    public static void WriteRowArray(this Utf8JsonWriter jsonWriter, string propertyName, Rows rows)
+    {
+        jsonWriter.WritePropertyName(propertyName);
+        jsonWriter.WriteStartArray();
+        foreach (var row in rows)
         {
-            if (identification != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                identification.WriteTo(jsonWriter);
-            }
+            row.WriteTo(jsonWriter);
         }
+        jsonWriter.WriteEndArray();
+    }
 
-        public static void WriteIdentifier(this Utf8JsonWriter jsonWriter, string propertyName, Identifier identifier)
+    public static void WriteStringArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, IList<string> list)
+    {
+        if (list.Count > 0)
         {
-            if (identifier != null)
+            jsonWriter.WritePropertyName(propertyName);
+            jsonWriter.WriteStartArray();
+            foreach (var changeEntry in list)
             {
-                jsonWriter.WritePropertyName(propertyName);
-                identifier.WriteTo(jsonWriter);
+                jsonWriter.WriteStringValue(changeEntry);
             }
+            jsonWriter.WriteEndArray();
         }
+    }
 
-        public static void WriteIntegerOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, int? value)
+    public static void WriteStringOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, string value)
+    {
+        if (value != null)
         {
-            if (value != null)
-            {
-                jsonWriter.WriteNumber(propertyName, (int)value);
-            }
+            jsonWriter.WriteString(propertyName, value);
         }
+    }
 
-        public static void WriteJsonObject(this Utf8JsonWriter jsonWriter, string propertyName, JsonObject jsonObject)
+    public static void WriteStringOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, LocalizableString value)
+    {
+        if (value != null)
         {
-            if (jsonObject != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                JsonSerializer.Serialize(jsonWriter, jsonObject);
-            }
-        }
-
-        public static void WriteKeyArray(this Utf8JsonWriter jsonWriter, string propertyName, Keys keys)
-        {
-            if (keys.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var key in keys)
-                {
-                    key.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        public static void WriteLocalizedUriArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<LocalizedUri> uris)
-        {
-            if (uris.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var uri in uris)
-                {
-                    uri.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        public static void WriteMimeTypedUriArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<MimeTypedUri> uris)
-        {
-            if (uris.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var uri in uris)
-                {
-                    uri.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        public static void WriteNumberOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, decimal? value)
-        {
-            if (value != null)
-            {
-                jsonWriter.WriteNumber(propertyName, (decimal)value);
-            }
-        }
-
-        public static void WriteOpenCodeListDocument(this Utf8JsonWriter jsonWriter, Document document, bool metaOnly)
-        {
-            if (document is CodeListDocument codeListDocument)
-            {
-                jsonWriter.WriteCodeListDocument(codeListDocument, metaOnly);
-            }
-            else if (document is CodeListSetDocument codeListSetDocument)
-            {
-                jsonWriter.WriteCodeListSetDocument(codeListSetDocument, metaOnly);
-            }
-        }
-
-        public static void WritePublisher(this Utf8JsonWriter jsonWriter, string propertyName, Publisher publisher)
-        {
-            if (publisher != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                publisher.WriteTo(jsonWriter);
-            }
-        }
-
-        public static void WriteReference(this Utf8JsonWriter jsonWriter, string propertyName, KeyRef reference)
-        {
-            if (reference != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                reference.WriteTo(jsonWriter);
-            }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
-            }
-        }
-
-        public static void WriteRowArray(this Utf8JsonWriter jsonWriter, string propertyName, Rows rows)
-        {
-            if (rows.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var row in rows)
-                {
-                    row.WriteTo(jsonWriter);
-                }
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        public static void WriteSource(this Utf8JsonWriter jsonWriter, string propertyName, IdentifierSource source)
-        {
-            if (source != null)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                source.WriteTo(jsonWriter);
-            }
-        }
-
-        public static void WriteStringArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<string> list)
-        {
-            if (list.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var changeEntry in list)
-                {
-                    jsonWriter.WriteStringValue(changeEntry);
-                }
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        public static void WriteStringOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, string value)
-        {
-            if (value != null)
-            {
-                jsonWriter.WriteString(propertyName, value);
-            }
-        }
-
-        public static void WriteTimeOnly(this Utf8JsonWriter jsonWriter, string propertyName, TimeOnly? value)
-        {
-            if (value != null)
-            {
-                jsonWriter.WriteString(propertyName, value?.ToString("HH:mm:ss", DateTimeFormatInfo.InvariantInfo));
-            }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
-            }
-        }
-
-        public static void WriteTimeOnlyOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, TimeOnly? value)
-        {
-            if (value != null)
-            {
-                jsonWriter.WriteString(propertyName, value?.ToString("HH:mm:ss", DateTimeFormatInfo.InvariantInfo));
-            }
-        }
-
-        public static void WriteUri(this Utf8JsonWriter jsonWriter, string propertyName, Uri value)
-        {
-            if (value != null)
-            {
-                jsonWriter.WriteString(propertyName, value.ToString());
-            }
-            else
-            {
-                jsonWriter.WriteNull(propertyName);
-            }
-        }
-
-        public static void WriteUriArray(this Utf8JsonWriter jsonWriter, string propertyName, IList<Uri> uris)
-        {
-            if (uris.Count > 0)
-            {
-                jsonWriter.WritePropertyName(propertyName);
-                jsonWriter.WriteStartArray();
-                foreach (var uri in uris)
-                {
-                    jsonWriter.WriteStringValue(uri.ToString());
-                }
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        public static void WriteUriOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Uri value)
-        {
-            if (value != null)
-            {
-                jsonWriter.WriteString(propertyName, value.ToString());
-            }
+            jsonWriter.WritePropertyName(propertyName);
+            JsonSerializer.Serialize(jsonWriter, value, CodeListBase.JsonSerializerOptions);
         }
     }
 }

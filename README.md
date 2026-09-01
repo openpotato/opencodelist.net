@@ -1,15 +1,16 @@
-[![NuGet Gallery](https://img.shields.io/badge/NuGet%20Gallery-opencodelist.net-blue.svg)](https://www.nuget.org/packages/opencodelist.net/)
+[![NuGet OpenCodeList.Net](https://img.shields.io/nuget/v/OpenCodeList.Net?label=OpenCodeList.Net)](https://www.nuget.org/packages/OpenCodeList.Net/)
 ![GitHub](https://img.shields.io/github/license/openpotato/opencodelist.net)
 
 # OpenCodeList\.NET
 
-A [.NET](https://dotnet.microsoft.com/) library for parsing and building [OpenCodeList](https://openpotato.github.io/opencodelist/en/) documents. 
+A [.NET](https://dotnet.microsoft.com/) library for parsing, validating, building and writing [OpenCodeList](https://openpotato.github.io/opencodelist/en/) documents. 
 
-+ Supports `.NET 10`, `.NET 9` and `.NET 8`
-+ Includes document class for code list documents
-+ Includes document class for code list set documents
-+ Includes synchronous and asynchronous methods
-+ Parsing and building based on `System.Text.Json`.
++ Supports `.NET 10`.
++ Supports OpenCodeList version `0.4.x`.
++ Includes document classes for code list and code list set documents.
++ Supports full documents as well as meta documents.
++ Supports synchronous and asynchronous loading and saving.
++ Parsing and serialization based on `System.Text.Json`.
 
 ## Installation
 
@@ -19,7 +20,7 @@ dotnet add package OpenCodeList.Net
 
 ## Getting started
 
-See [GitHub wiki](https://github.com/openpotato/opencodelist.net/wiki).
+Documentation is available in the [GitHub wiki](https://github.com/openpotato/opencodelist.net/wiki).
 
 ## Can I help?
 

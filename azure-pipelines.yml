@@ -26,7 +26,7 @@ stages:
         pwsh: true
 
 - stage: build
-  displayName: Build Application
+  displayName: Build Packages
   dependsOn: versioning
   variables:
     BuildConfiguration: 'release'
@@ -35,7 +35,7 @@ stages:
     MinorVersion: $[ stageDependencies.versioning.get_version.outputs['gitver.MinorVersion'] ]
     PatchVersion: $[ stageDependencies.versioning.get_version.outputs['gitver.PatchVersion'] ]  
   jobs:  
-  - job: create_setups
+  - job: build_packages
     displayName: Build, Publish and Sign
     variables:
       NUGET_PACKAGES: '$(Pipeline.Workspace)/.nuget/packages'
@@ -55,12 +55,14 @@ stages:
       displayName: 'Prepare DigiCert Code Signing'
       condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
       env:
+        SM_HOST : $(SM_HOST)
+        SM_API_KEY: $(SM_API_KEY)
         SM_CLIENT_CERT_FILE : $(SM_CLIENT_CERT_FILE.secureFilePath)
+        SM_CLIENT_CERT_PASSWORD : $(SM_CLIENT_CERT_PASSWORD)
       inputs:
         targetType: 'inline'
         script: |
-          $env:PATH += ';C:\Program Files\DigiCert\DigiCert Keylocker Tools'
-          smctl credentials save $(SM_API_KEY) $(SM_CLIENT_CERT_PASSWORD)
+          $env:PATH += ';C:\Program Files\DigiCert\DigiCert One Signing Manager Tools'
           smctl windows certsync --keypair-alias=$(SM_KEYPAIR_ALIAS)
         failOnStderr: true
         pwsh: true
@@ -109,6 +111,7 @@ stages:
       inputs:
         command: 'pack'
         packagesToPack: 'src/OpenCodeList.Net.csproj'
+        configuration: '$(BuildConfiguration)'
         nobuild: true
         arguments: '/p:ContinuousIntegrationBuild=true'
         versioningScheme: 'byEnvVar'
@@ -117,8 +120,10 @@ stages:
       displayName: 'Sign'
       condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
       env:
-        SM_CLIENT_CERT_FILE : $(SM_CLIENT_CERT_FILE.secureFilePath)
         SM_HOST : $(SM_HOST)
+        SM_API_KEY: $(SM_API_KEY)
+        SM_CLIENT_CERT_FILE : $(SM_CLIENT_CERT_FILE.secureFilePath)
+        SM_CLIENT_CERT_PASSWORD : $(SM_CLIENT_CERT_PASSWORD)
       inputs:
         command: 'custom'
         arguments: 'sign $(Build.ArtifactStagingDirectory)/**/*.nupkg -Timestamper http://timestamp.digicert.com -CertificateFingerprint $(SM_CERT_FINGERPRINT) -HashAlgorithm SHA256 -Verbosity detailed -Overwrite'

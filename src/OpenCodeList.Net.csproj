@@ -1,17 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>STÜBER SYSTEMS GmbH</Authors>
     <Company>STÜBER SYSTEMS GmbH</Company>
     <Copyright>© 2026 STÜBER SYSTEMS GmbH</Copyright>
     <Product>OpenCodeList.NET</Product>
-    <Description>A .NET library for parsing and building OpenCodeList documents</Description>
-    <PackageLicenseUrl></PackageLicenseUrl>
+    <Description>A .NET library for parsing, validating, building and writing OpenCodeList documents</Description>
     <RepositoryType>git</RepositoryType>
     <LangVersion>latest</LangVersion>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/openpotato/opencodelist.net</RepositoryUrl>
@@ -31,7 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Enbrea.SemVer" Version="0.2.0" />
+    <PackageReference Include="Enbrea.Bcp47.Iana" Version="0.1.0" />
+    <PackageReference Include="Enbrea.SemVer" Version="0.3.0" />
   </ItemGroup>
 
 </Project>

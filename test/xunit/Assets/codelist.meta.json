@@ -1,5 +1,5 @@
 {
-  "$opencodelist": "0.3.0",
+  "$opencodelist": "0.4.0",
   "$comments": [
     "This is a comment."
   ],
@@ -46,7 +46,8 @@
             "url": "https://www.example.com/trustme"
           }
         },
-        "url": "https://openpotato.github.io/opencodelist/"
+        "url": "https://openpotato.github.io/opencodelist/",
+        "x-contact-email": "info@example.org"
       },
       "publishedAt": "2025-01-01T12:00:00+02:00",
       "validFrom": "2025-01-01T12:00:00+02:00",
@@ -67,18 +68,42 @@
           "mimeType": "text/csv",
           "url": "https://example.com/codelist-2025-01-01.csv"
         }
-      ]
+      ],
+      "x-test": {
+        "enabled": true
+      }
     },
     "columnSet": {
       "columns": [
         {
           "id": "code",
-          "name": "Code",
-          "type": "string"
+          "name": {
+            "en": "Code",
+            "de": "Code"
+          },
+          "type": "string",
+          "description": {
+            "en": "Unique code",
+            "de": "Eindeutiger Code"
+          },
+          "nullable": false,
+          "optional": false
         },
         {
           "id": "federalState",
           "name": "Federal State",
+          "type": "string"
+        },
+        {
+          "id": "name",
+          "name": {
+            "en": "Name",
+            "de": "Name"
+          },
+          "description": {
+            "en": "Localized display name",
+            "de": "Lokalisierter Anzeigename"
+          },
           "type": "string"
         },
         {
@@ -100,17 +125,27 @@
           "members": [
             {
               "value": "e1",
-              "description": "e1 value"
+              "description": {
+                "en": "e1 value",
+                "de": "e1 Wert"
+              }
             },
             {
               "value": "e2",
-              "description": "e2 value"
+              "description": {
+                "en": "e2 value",
+                "de": "e2 Wert"
+              }
             },
             {
               "value": "e3",
-              "description": "e3 value"
+              "description": {
+                "en": "e3 value",
+                "de": "e3 Wert"
+              }
             }
-          ]
+          ],
+          "language": "en"
         },
         {
           "id": "enumSet",
@@ -119,17 +154,27 @@
           "members": [
             {
               "value": "e1",
-              "description": "e1 value"
+              "description": {
+                "en": "e1 value",
+                "de": "e1 Wert"
+              }
             },
             {
               "value": "e2",
-              "description": "e2 value"
+              "description": {
+                "en": "e2 value",
+                "de": "e2 Wert"
+              }
             },
             {
               "value": "e3",
-              "description": "e3 value"
+              "description": {
+                "en": "e3 value",
+                "de": "e3 Wert"
+              }
             }
-          ]
+          ],
+          "language": "en"
         },
         {
           "id": "bool",
@@ -155,16 +200,23 @@
           "id": "json",
           "name": "Embedded JSON",
           "type": "document",
-          "schema": "https://json.schemastore.org/github-action.json"
+          "schemaUri": "https://json.schemastore.org/github-action.json"
         }
       ],
       "keys": [
         {
           "id": "codeKey",
-          "name": "Primary Key",
+          "name": {
+            "en": "Primary Key",
+            "de": "Primärschlüssel"
+          },
           "columnIds": [
             "code"
-          ]
+          ],
+          "description": {
+            "en": "Primary code key",
+            "de": "Primärer Schlüssel"
+          }
         }
       ],
       "defaultKey": {
@@ -173,7 +225,10 @@
       "foreignKeys": [
         {
           "id": "foreignKey",
-          "name": "Foreign Key",
+          "name": {
+            "en": "Foreign Key",
+            "de": "Fremdschlüssel"
+          },
           "columnIds": [
             "federalState"
           ],
@@ -186,6 +241,10 @@
               ]
             },
             "keyId": "codeKey"
+          },
+          "description": {
+            "en": "Federal-state reference",
+            "de": "Bundesland-Referenz"
           }
         }
       ]
