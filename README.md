@@ -11,6 +11,7 @@ A [.NET](https://dotnet.microsoft.com/) library for parsing, validating, buildin
 + Supports full documents as well as meta documents.
 + Supports synchronous and asynchronous loading and saving.
 + Parsing and serialization based on `System.Text.Json`.
++ Semantic validation implemented with [FluentValidation](https://github.com/FluentValidation/FluentValidation).
 
 ## Installation
 

@@ -9,8 +9,6 @@
  */
 #endregion
 
-using Enbrea.SemVer;
-using FluentValidation;
 using FluentValidation.Results;
 using System;
 using System.IO;
@@ -48,7 +46,7 @@ public class CodeListSetDocument : CodeListBase
     {
         ArgumentNullException.ThrowIfNull(stream);
 
-        using var jsonDocument = JsonDocument.Parse(stream, default);
+        using var jsonDocument = JsonDocument.Parse(stream);
 
         return Parse(jsonDocument.RootElement);
     }

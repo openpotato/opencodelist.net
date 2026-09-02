@@ -9,8 +9,6 @@
  */
 #endregion
 
-using Enbrea.SemVer;
-using FluentValidation;
 using FluentValidation.Results;
 using System;
 using System.IO;
@@ -172,9 +170,9 @@ public class CodeListDocument : CodeListBase
     {
         base.Clear();
         DefaultKey = null;
-        Keys?.Clear();
-        ForeignKeys?.Clear();
-        Columns?.Clear();
+        Keys.Clear();
+        ForeignKeys.Clear();
+        Columns.Clear();
     }
 
     /// <summary>
