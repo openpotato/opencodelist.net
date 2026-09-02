@@ -10,6 +10,8 @@
 #endregion
 
 using Enbrea.SemVer;
+using FluentValidation;
+using FluentValidation.Results;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -170,9 +172,9 @@ public class CodeListDocument : CodeListBase
     {
         base.Clear();
         DefaultKey = null;
-        Keys.Clear();
-        ForeignKeys.Clear();
-        Columns.Clear();
+        Keys?.Clear();
+        ForeignKeys?.Clear();
+        Columns?.Clear();
     }
 
     /// <summary>
@@ -188,10 +190,11 @@ public class CodeListDocument : CodeListBase
     /// <summary>
     /// Validates the code list document according to the OpenCodeList specification
     /// </summary>
-    public override void Validate()
+    /// <returns>A <see cref="ValidationResult"/> representing the result of the validation.</returns>  
+    public override ValidationResult Validate()
     {
-        var validator = new CodeListDocumentValidator(this);
-        validator.Validate();
+        var validator = new CodeListDocumentValidator();
+        return validator.Validate(this);
     }
 
     /// <summary>
@@ -217,26 +220,7 @@ public class CodeListDocument : CodeListBase
             throw new CodeListParserException($"JSON property '{PropertyNames.OpenCodeList}' must be a string.");
         }
 
-        var versionString = versionProperty.GetString();
-
-        if (string.IsNullOrWhiteSpace(versionString))
-        {
-            throw new CodeListParserException($"JSON property '{PropertyNames.OpenCodeList}' must not be empty.");
-        }
-        SemanticVersion version;
-        try
-        {
-            version = SemanticVersion.Parse(versionString);
-        }
-        catch (Exception ex)
-        {
-            throw new CodeListParserException($"Invalid OpenCodeList version '{versionString}'.", ex);
-        }
-
-        if (!SupportedVersionRange.Satisfies(version))
-        {
-            throw new CodeListParserException($"OpenCodeList version '{version}' is not supported.");
-        }
+        OpenCodeListVersion.Parse(versionProperty.GetString());
 
         if (!rootElement.GetRequiredObjectProperty(PropertyNames.CodeList, out var codeListProperty))
         {

@@ -1,394 +1,384 @@
-﻿#region OpenCodeList.NET - Copyright (c) STÜBER SYSTEMS GmbH
-/*    
- *    OpenCodeList.NET 
- *    
+#region OpenCodeList.NET - Copyright (c) STÜBER SYSTEMS GmbH
+/*
+ *    OpenCodeList.NET
+ *
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
- *    Licensed under the MIT License. 
- * 
+ *    Licensed under the MIT License.
+ *    
  */
 #endregion
 
-using Enbrea.Bcp47.Iana;
+using FluentValidation;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
 
 namespace OpenCodeList;
 
 /// <summary>
-/// Base class for validating <see cref="CodeListBase"/> instances.
+/// Base validator for OpenCodeList documents.
 /// </summary>
-public abstract class CodeListBaseValidator
+/// <typeparam name="TDocument">The document type.</typeparam>
+public abstract class CodeListBaseValidator<TDocument> : AbstractValidator<TDocument>
+    where TDocument : CodeListBase
 {
-    private readonly CodeListBase _document;
-
     /// <summary>
-    /// Initializes a new instance of the <see cref="CodeListBaseValidator"/> class.
+    /// Initializes the validation rules shared by all OpenCodeList document types.
     /// </summary>
-    /// <param name="document">The <see cref="CodeListBase"/> instance to validate.</param>
-    public CodeListBaseValidator(CodeListBase document)
+    protected CodeListBaseValidator()
     {
-        _document = document;
+        RuleFor(document => document.Annotation)
+            .SetValidator(new AnnotationValidator())
+            .OverridePropertyName(PropertyNames.Annotation)
+            .When(document => document.Annotation is not null);
+
+        RuleFor(document => document.Identification)
+            .NotNull()
+            .WithMessage("Identification must not be null.")
+            .SetValidator(new IdentificationValidator())
+            .OverridePropertyName(PropertyNames.Identification);
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="Annotation"/> instances.
+/// </summary>
+internal sealed class AnnotationValidator : AbstractValidator<Annotation>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AnnotationValidator"/> class.
+    /// </summary>
+    public AnnotationValidator()
+    {
+        RuleFor(annotation => annotation)
+            .Must(annotation => annotation.AppInfo is not null || annotation.Descriptions is not null && annotation.Descriptions.Count > 0)
+            .WithMessage($"Annotation must contain either '{PropertyNames.Descriptions}' or '{PropertyNames.AppInfo}'.");
+
+        RuleForEach(annotation => annotation.Descriptions)
+            .NotNull()
+            .WithMessage("Description must not be null.")
+            .OverridePropertyName(PropertyNames.Descriptions)
+            .When(annotation => annotation.Descriptions is not null);
+
+        RuleForEach(annotation => annotation.Descriptions)
+            .SetValidator(new DescriptionValidator())
+            .OverridePropertyName(PropertyNames.Descriptions)
+            .When(annotation => annotation.Descriptions is not null);
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="Description"/> instances.
+/// </summary>
+internal sealed class DescriptionValidator : AbstractValidator<Description>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DescriptionValidator"/> class.
+    /// </summary>
+    public DescriptionValidator()
+    {
+        RuleFor(description => description.Language)
+            .Must(ValidatorHelpers.IsOptionalLanguageTag)
+            .WithMessage("Language must contain a valid BCP 47 language tag.")
+            .OverridePropertyName(PropertyNames.Language);
+
+        RuleFor(description => description.Format)
+            .NotEmpty()
+            .WithMessage("Format must not be empty.")
+            .Must(format => format is "text" or "markdown" or "html" or "xml")
+            .WithMessage(description => $"Unsupported markup format '{description.Format}'.")
+            .OverridePropertyName(PropertyNames.Format);
+
+        RuleFor(description => description.Content)
+            .NotEmpty()
+            .WithMessage("Content must not be empty.")
+            .OverridePropertyName(PropertyNames.Content);
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="Identification"/> instances.
+/// </summary>
+internal sealed class IdentificationValidator : AbstractValidator<Identification>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="IdentificationValidator"/> class.
+    /// </summary>
+    public IdentificationValidator()
+    {
+        RuleFor(identification => identification.Language)
+            .Must(ValidatorHelpers.IsOptionalLanguageTag)
+            .WithMessage("Language must contain a valid BCP 47 language tag.")
+            .OverridePropertyName(PropertyNames.Language);
+
+        RuleFor(identification => identification.ShortName)
+            .NotEmpty()
+            .WithMessage("Short name must not be empty.")
+            .OverridePropertyName(PropertyNames.ShortName);
+
+        RuleFor(identification => identification.CanonicalUri)
+            .NotNull()
+            .WithMessage("Canonical URI must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("Canonical URI must be absolute.")
+            .OverridePropertyName(PropertyNames.CanonicalUri);
+
+        RuleFor(identification => identification.CanonicalVersionUri)
+            .NotNull()
+            .WithMessage("Canonical version URI must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("Canonical version URI must be absolute.")
+            .OverridePropertyName(PropertyNames.CanonicalVersionUri);
+
+        RuleForEach(identification => identification.Tags)
+            .NotNull()
+            .WithMessage("Tag must not be null.")
+            .OverridePropertyName(PropertyNames.Tags)
+            .When(identification => identification.Tags is not null);
+
+        RuleForEach(identification => identification.ChangeLog)
+            .NotNull()
+            .WithMessage("Change-log entry must not be null.")
+            .OverridePropertyName(PropertyNames.ChangeLog)
+            .When(identification => identification.ChangeLog is not null);
+
+        RuleFor(identification => identification.Publisher)
+            .SetValidator(new PublisherValidator())
+            .OverridePropertyName(PropertyNames.Publisher)
+            .When(identification => identification.Publisher is not null);
+
+        RuleForEach(identification => identification.LocationUrls)
+            .NotNull()
+            .WithMessage("Location URI must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("Location URI must be absolute.")
+            .OverridePropertyName(PropertyNames.LocationUrls)
+            .When(identification => identification.LocationUrls is not null);
+
+        RuleForEach(identification => identification.AlternateLanguageLocations)
+            .NotNull()
+            .WithMessage("Alternate language location must not be null.")
+            .OverridePropertyName(PropertyNames.AlternateLanguageLocations)
+            .When(identification => identification.AlternateLanguageLocations is not null);
+
+        RuleForEach(identification => identification.AlternateLanguageLocations)
+            .SetValidator(new LanguageLocationValidator())
+            .OverridePropertyName(PropertyNames.AlternateLanguageLocations)
+            .When(identification => identification.AlternateLanguageLocations is not null);
+
+        RuleForEach(identification => identification.AlternateFormatLocations)
+            .NotNull()
+            .WithMessage("Alternate format location must not be null.")
+            .OverridePropertyName(PropertyNames.AlternateFormatLocations)
+            .When(identification => identification.AlternateFormatLocations is not null);
+
+        RuleForEach(identification => identification.AlternateFormatLocations)
+            .SetValidator(new MimeTypedUriValidator())
+            .OverridePropertyName(PropertyNames.AlternateFormatLocations)
+            .When(identification => identification.AlternateFormatLocations is not null);
+
+        RuleFor(identification => identification.ValidFrom)
+            .LessThanOrEqualTo(identification => identification.ValidTo)
+            .WithMessage("Valid-from must be less than or equal to valid-to.")
+            .OverridePropertyName(PropertyNames.ValidFrom)
+            .When(identification => identification.ValidFrom is not null && identification.ValidTo is not null);
+
+        RuleFor(identification => identification.Extensions)
+            .Custom((extensions, context) => ValidateExtensions(extensions, context));
     }
 
     /// <summary>
-    /// Validates the <see cref="CodeListBase"/> instance.
+    /// Validates the extension properties of the identification.
     /// </summary>
-    public virtual void Validate()
+    private static void ValidateExtensions(IDictionary<string, JsonElement> extensions, ValidationContext<Identification> context)
     {
-        ValidateCommentList(_document.Comments, PropertyNames.Comments);
-        ValidateAnnotation(_document.Annotation, PropertyNames.Annotation);
-        ValidateIdentification(_document.Identification, PropertyNames.Identification);
-    }
-
-    /// <summary>
-    /// Validates the <see cref="Annotation"/> instance.
-    /// </summary>
-    protected static void ValidateAnnotation(Annotation annotation, string propertyPath)
-    {
-        if (annotation is null)
+        if (extensions is null)
         {
             return;
         }
 
-        var hasDescriptions = annotation.Descriptions is not null && annotation.Descriptions.Count > 0;
-        var hasAppInfo = annotation.AppInfo is not null;
-
-        if (!hasDescriptions && !hasAppInfo)
+        foreach (var extension in extensions)
         {
-            throw new CodeListValidatorException($"'{propertyPath}' must contain either '{PropertyNames.Descriptions}' or '{PropertyNames.AppInfo}'.");
-        }
-
-        if (annotation.Descriptions is null)
-        {
-            return;
-        }
-
-        for (var i = 0; i < annotation.Descriptions.Count; i++)
-        {
-            var description = annotation.Descriptions[i];
-            var itemPath = $"{propertyPath}.{PropertyNames.Descriptions}[{i}]";
-
-            if (description is null)
+            if (!extension.Key.StartsWith("x-", StringComparison.Ordinal))
             {
-                throw new CodeListValidatorException($"'{itemPath}' must not be null.");
-            }
-
-            ValidateLanguageTag(description.Language, $"{itemPath}.{PropertyNames.Language}", false);
-            ValidateRequiredString(description.Format, $"{itemPath}.{PropertyNames.Format}");
-            ValidateRequiredString(description.Content, $"{itemPath}.{PropertyNames.Content}");
-
-            if (description.Format is not "text" and not "markdown" and not "html" and not "xml")
-            {
-                throw new CodeListValidatorException($"'{itemPath}.{PropertyNames.Format}' contains unsupported markup format '{description.Format}'.");
+                context.AddFailure(extension.Key, $"Extension property '{extension.Key}' must be prefixed with 'x-'.");
             }
         }
     }
+}
 
+/// <summary>
+/// Validator for <see cref="IdentifierSource"/> instances.
+/// </summary>
+internal sealed class IdentifierSourceValidator : AbstractValidator<IdentifierSource>
+{
     /// <summary>
-    /// Validates a list of comments.
+    /// Initializes a new instance of the <see cref="IdentifierSourceValidator"/> class.
     /// </summary>
-    protected static void ValidateCommentList(IList<string> comments, string propertyPath)
+    public IdentifierSourceValidator()
     {
-        for (var i = 0; i < comments.Count; i++)
-        {
-            if (comments[i] is null)
-            {
-                throw new CodeListValidatorException($"'{propertyPath}[{i}]' must not be null.");
-            }
-        }
+        RuleFor(source => source.ShortName)
+            .NotEmpty()
+            .WithMessage("Short name must not be empty.")
+            .OverridePropertyName(PropertyNames.ShortName);
+
+        RuleFor(source => source.Url)
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("URL must be absolute.")
+            .OverridePropertyName(PropertyNames.Url);
     }
+}
 
+/// <summary>
+/// Validator for <see cref="Identifier"/> instances.
+/// </summary>
+internal sealed class IdentifierValidator : AbstractValidator<Identifier>
+{
     /// <summary>
-    /// Validates the <see cref="ExternalCodeListBaseRef"/> instance.
+    /// Initializes a new instance of the <see cref="IdentifierValidator"/> class.
     /// </summary>
-    protected static void ValidateExternalCodeListRef(ExternalCodeListBaseRef codeListRef, string propertyPath)
+    public IdentifierValidator()
     {
-        if (codeListRef is null)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-        }
+        RuleFor(identifier => identifier.Value)
+            .NotEmpty()
+            .WithMessage("Identifier value must not be empty.")
+            .OverridePropertyName(PropertyNames.Value);
 
-        ValidateAnnotation(codeListRef.Annotation, $"{propertyPath}.{PropertyNames.Annotation}");
-        ValidateRequiredUri(codeListRef.CanonicalUri, $"{propertyPath}.{PropertyNames.CanonicalUri}");
-        ValidateOptionalUri(codeListRef.CanonicalVersionUri, $"{propertyPath}.{PropertyNames.CanonicalVersionUri}");
-        ValidateUriList(codeListRef.LocationUrls, $"{propertyPath}.{PropertyNames.LocationUrls}", false);
+        RuleFor(identifier => identifier.Source)
+            .SetValidator(new IdentifierSourceValidator())
+            .OverridePropertyName(PropertyNames.Source)
+            .When(identifier => identifier.Source is not null);
     }
+}
 
+/// <summary>
+/// Validator for <see cref="LanguageLocation"/> instances.
+/// </summary>
+internal sealed class LanguageLocationValidator : AbstractValidator<LanguageLocation>
+{
     /// <summary>
-    /// Validates the <see cref="Identification"/> instance.
+    /// Initializes a new instance of the <see cref="LanguageLocationValidator"/> class.
     /// </summary>
-    protected static void ValidateIdentification(Identification identification, string propertyPath)
+    public LanguageLocationValidator()
     {
-        if (identification is null)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-        }
+        RuleFor(location => location.Language)
+            .NotEmpty()
+            .WithMessage("Language must not be empty.")
+            .Must(ValidatorHelpers.IsLanguageTag)
+            .WithMessage("Language must contain a valid BCP 47 language tag.")
+            .OverridePropertyName(PropertyNames.Language);
 
-        ValidateLanguageTag(identification.Language, $"{propertyPath}.{PropertyNames.Language}", false);
-        ValidateRequiredString(identification.ShortName, $"{propertyPath}.{PropertyNames.ShortName}");
-        ValidateRequiredUri(identification.CanonicalUri, $"{propertyPath}.{PropertyNames.CanonicalUri}");
-        ValidateRequiredUri(identification.CanonicalVersionUri, $"{propertyPath}.{PropertyNames.CanonicalVersionUri}");
-        ValidateStringList(identification.Tags, $"{propertyPath}.{PropertyNames.Tags}", false);
-        ValidateStringList(identification.ChangeLog, $"{propertyPath}.{PropertyNames.ChangeLog}", false);
-        ValidatePublisher(identification.Publisher, $"{propertyPath}.{PropertyNames.Publisher}");
-        ValidateUriList(identification.LocationUrls, $"{propertyPath}.{PropertyNames.LocationUrls}", false);
+        RuleFor(location => location.Url)
+            .NotNull()
+            .WithMessage("URL must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("URL must be absolute.")
+            .OverridePropertyName(PropertyNames.Url);
+    }
+}
 
-        if (identification.AlternateLanguageLocations is not null)
-        {
-            for (var i = 0; i < identification.AlternateLanguageLocations.Count; i++)
+/// <summary>
+/// Validator for <see cref="MimeTypedUri"/> instances.
+/// </summary>
+internal sealed class MimeTypedUriValidator : AbstractValidator<MimeTypedUri>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MimeTypedUriValidator"/> class.
+    /// </summary>
+    public MimeTypedUriValidator()
+    {
+        RuleFor(location => location.MimeType)
+            .NotEmpty()
+            .WithMessage("MIME type must not be empty.")
+            .OverridePropertyName(PropertyNames.MimeType);
+
+        RuleFor(location => location.Url)
+            .NotNull()
+            .WithMessage("URL must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("URL must be absolute.")
+            .OverridePropertyName(PropertyNames.Url);
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="Publisher"/> instances.
+/// </summary>
+internal sealed class PublisherValidator : AbstractValidator<Publisher>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PublisherValidator"/> class.
+    /// </summary>
+    public PublisherValidator()
+    {
+        RuleFor(publisher => publisher.ShortName)
+            .NotEmpty()
+            .WithMessage("Short name must not be empty.")
+            .OverridePropertyName(PropertyNames.ShortName);
+
+        RuleFor(publisher => publisher.Url)
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("URL must be absolute.")
+            .OverridePropertyName(PropertyNames.Url);
+
+        RuleFor(publisher => publisher.Identifier)
+            .SetValidator(new IdentifierValidator())
+            .OverridePropertyName(PropertyNames.Identifier)
+            .When(publisher => publisher.Identifier is not null);
+
+        RuleFor(publisher => publisher.Extensions)
+            .Custom((extensions, context) =>
             {
-                var languageLocation = identification.AlternateLanguageLocations[i];
-                var itemPath = $"{propertyPath}.{PropertyNames.AlternateLanguageLocations}[{i}]";
-
-                if (languageLocation is null)
+                if (extensions is null)
                 {
-                    throw new CodeListValidatorException($"'{itemPath}' must not be null.");
+                    return;
                 }
 
-                ValidateLanguageTag(languageLocation.Language, $"{itemPath}.{PropertyNames.Language}", true);
-                ValidateRequiredUri(languageLocation.Url, $"{itemPath}.{PropertyNames.Url}");
-            }
-        }
-
-        if (identification.AlternateFormatLocations is not null)
-        {
-            for (var i = 0; i < identification.AlternateFormatLocations.Count; i++)
-            {
-                var typedUri = identification.AlternateFormatLocations[i];
-                var itemPath = $"{propertyPath}.{PropertyNames.AlternateFormatLocations}[{i}]";
-
-                if (typedUri is null)
+                foreach (var extension in extensions)
                 {
-                    throw new CodeListValidatorException($"'{itemPath}' must not be null.");
+                    if (!extension.Key.StartsWith("x-", StringComparison.Ordinal))
+                    {
+                        context.AddFailure(extension.Key, $"Extension property '{extension.Key}' must be prefixed with 'x-'.");
+                    }
                 }
-
-                ValidateRequiredString(typedUri.MimeType, $"{itemPath}.{PropertyNames.MimeType}");
-                ValidateRequiredUri(typedUri.Url, $"{itemPath}.{PropertyNames.Url}");
-            }
-        }
-
-        if (identification.ValidFrom is not null && identification.ValidTo is not null && identification.ValidFrom > identification.ValidTo)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}.{PropertyNames.ValidFrom}' must be less than or equal to '{propertyPath}.{PropertyNames.ValidTo}'.");
-        }
-
-        if (identification.Extensions is not null)
-        {
-            foreach (var extension in identification.Extensions)
-            {
-                if (!extension.Key.StartsWith("x-", StringComparison.Ordinal))
-                {
-                    throw new CodeListValidatorException($"Extension property '{extension.Key}' must be prefixed with 'x-'.");
-                }
-            }
-        }
+            });
     }
+}
 
+/// <summary>
+/// Validator for <see cref="ExternalCodeListBaseRef"/> instances.
+/// </summary>
+internal sealed class ExternalCodeListBaseRefValidator : AbstractValidator<ExternalCodeListBaseRef>
+{
     /// <summary>
-    /// Validates a language tag according to BCP 47.
+    /// Initializes a new instance of the <see cref="ExternalCodeListBaseRefValidator"/> class.
     /// </summary>
-    protected static void ValidateLanguageTag(string languageTag, string propertyPath, bool required)
+    public ExternalCodeListBaseRefValidator()
     {
-        if (string.IsNullOrWhiteSpace(languageTag))
-        {
-            if (required)
-            {
-                throw new CodeListValidatorException($"'{propertyPath}' must not be empty.");
-            }
+        RuleFor(reference => reference.Annotation)
+            .SetValidator(new AnnotationValidator())
+            .OverridePropertyName(PropertyNames.Annotation)
+            .When(reference => reference.Annotation is not null);
 
-            return;
-        }
+        RuleFor(reference => reference.CanonicalUri)
+            .NotNull()
+            .WithMessage("Canonical URI must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("Canonical URI must be absolute.")
+            .OverridePropertyName(PropertyNames.CanonicalUri);
 
-        if (!IanaLanguageTagValidator.IsValid(languageTag))
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must contain a valid language tag.");
-        }
+        RuleFor(reference => reference.CanonicalVersionUri)
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("Canonical version URI must be absolute.")
+            .OverridePropertyName(PropertyNames.CanonicalVersionUri);
 
-        var parts = languageTag.Split('-');
-        if (parts.Any(part => string.IsNullOrWhiteSpace(part)))
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must contain a valid language tag.");
-        }
-    }
-
-    /// <summary>
-    /// Validates a <see cref="LocalizableString"/> instance.   
-    /// </summary>
-    protected static void ValidateLocalizableString(LocalizableString value, string propertyPath, bool required)
-    {
-        if (value is null)
-        {
-            if (required)
-            {
-                throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-            }
-
-            return;
-        }
-
-        if (value is NonLocalizedString nonLocalizedString)
-        {
-            ValidateRequiredString(nonLocalizedString.Value, propertyPath);
-            return;
-        }
-
-        if (value is LocalizedString localizedString)
-        {
-            if (localizedString.Values is null || localizedString.Values.Count == 0)
-            {
-                throw new CodeListValidatorException($"'{propertyPath}' must contain at least one localized value.");
-            }
-
-            foreach (var localizedValue in localizedString.Values)
-            {
-                ValidateLanguageTag(localizedValue.Key, $"{propertyPath}[{localizedValue.Key}]", true);
-                ValidateRequiredString(localizedValue.Value, $"{propertyPath}[{localizedValue.Key}]", false);
-            }
-
-            return;
-        }
-
-        throw new CodeListValidatorException($"'{propertyPath}' contains an unsupported localizable string implementation.");
-    }
-
-    /// <summary>
-    /// Validates an optional URI. If the URI is not null, it must be an absolute URI.
-    /// </summary>
-    protected static void ValidateOptionalUri(Uri uri, string propertyPath)
-    {
-        if (uri is null)
-        {
-            return;
-        }
-
-        if (!uri.IsAbsoluteUri)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must contain an absolute URI.");
-        }
-    }
-
-    /// <summary>
-    /// Validates a <see cref="Publisher"/> instance.
-    /// </summary>
-    protected static void ValidatePublisher(Publisher publisher, string propertyPath)
-    {
-        if (publisher is null)
-        {
-            return;
-        }
-
-        ValidateRequiredString(publisher.ShortName, $"{propertyPath}.{PropertyNames.ShortName}");
-        ValidateOptionalUri(publisher.Url, $"{propertyPath}.{PropertyNames.Url}");
-
-        if (publisher.Extensions is not null)
-        {
-            foreach (var extension in publisher.Extensions)
-            {
-                if (!extension.Key.StartsWith("x-", StringComparison.Ordinal))
-                {
-                    throw new CodeListValidatorException($"Extension property '{extension.Key}' must be prefixed with 'x-'.");
-                }
-            }
-        }
-
-        if (publisher.Identifier is null)
-        {
-            return;
-        }
-
-        ValidateRequiredString(publisher.Identifier.Value, $"{propertyPath}.{PropertyNames.Identifier}.{PropertyNames.Value}");
-
-        if (publisher.Identifier.Source is null)
-        {
-            return;
-        }
-
-        ValidateRequiredString(publisher.Identifier.Source.ShortName, $"{propertyPath}.{PropertyNames.Identifier}.{PropertyNames.Source}.{PropertyNames.ShortName}");
-        ValidateOptionalUri(publisher.Identifier.Source.Url, $"{propertyPath}.{PropertyNames.Identifier}.{PropertyNames.Source}.{PropertyNames.Url}");
-    }
-
-    /// <summary>
-    /// Validates a required string. If the string is null or empty (after trimming), an exception is thrown.
-    /// </summary>
-    protected static void ValidateRequiredString(string value, string propertyPath, bool trim = true)
-    {
-        if (trim)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                throw new CodeListValidatorException($"'{propertyPath}' must not be empty.");
-            }
-        }
-        else if (value is null)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-        }
-    }
-
-    /// <summary>
-    /// Validates a required URI. If the URI is null or not absolute, an exception is thrown.
-    /// </summary>
-    protected static void ValidateRequiredUri(Uri uri, string propertyPath)
-    {
-        if (uri is null)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-        }
-
-        ValidateOptionalUri(uri, propertyPath);
-    }
-
-    /// <summary>
-    /// Validates a list of strings. If the list is null, empty (when required), or contains null/empty strings, an exception is thrown.
-    /// </summary>
-    protected static void ValidateStringList(IList<string> values, string propertyPath, bool requireNonEmpty)
-    {
-        if (values is null)
-        {
-            if (requireNonEmpty)
-            {
-                throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-            }
-
-            return;
-        }
-
-        if (requireNonEmpty && values.Count == 0)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must not be empty.");
-        }
-
-        for (var i = 0; i < values.Count; i++)
-        {
-            ValidateRequiredString(values[i], $"{propertyPath}[{i}]", false);
-        }
-    }
-
-    /// <summary>
-    /// Validates a list of URIs. If the list is null, empty (when required), or contains null/invalid URIs, an exception is thrown.
-    /// </summary>
-    protected static void ValidateUriList(IList<Uri> values, string propertyPath, bool requireNonEmpty)
-    {
-        if (values is null)
-        {
-            if (requireNonEmpty)
-            {
-                throw new CodeListValidatorException($"'{propertyPath}' must not be null.");
-            }
-
-            return;
-        }
-
-        if (requireNonEmpty && values.Count == 0)
-        {
-            throw new CodeListValidatorException($"'{propertyPath}' must not be empty.");
-        }
-
-        for (var i = 0; i < values.Count; i++)
-        {
-            ValidateRequiredUri(values[i], $"{propertyPath}[{i}]");
-        }
+        RuleForEach(reference => reference.LocationUrls)
+            .NotNull()
+            .WithMessage("Location URI must not be null.")
+            .Must(ValidatorHelpers.IsAbsoluteUri)
+            .WithMessage("Location URI must be absolute.")
+            .OverridePropertyName(PropertyNames.LocationUrls)
+            .When(reference => reference.LocationUrls is not null);
     }
 }

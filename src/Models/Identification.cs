@@ -154,4 +154,29 @@ public sealed class Identification
     [JsonPropertyOrder(6)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string Version { get; set; }
+
+    /// <summary>
+    /// Clears all properties of the Identification object, resetting them to their default values.
+    /// </summary>
+    public void Clear()
+    {
+        ShortName = null;
+        LongName = null;
+        Description = null;
+        Language = null;
+        CanonicalUri = null;
+        CanonicalVersionUri = null;
+        Publisher = null;
+        PublishedAt = null;
+        Version = null;
+        ValidFrom = null;
+        ValidTo = null;
+        AlternateFormatLocations?.Clear();
+        AlternateLanguageLocations?.Clear();
+        LocationUrls?.Clear();
+        ChangeLog?.Clear();
+        Tags?.Clear();
+        Extensions?.Clear();
+        Extensions = null;
+    }
 }

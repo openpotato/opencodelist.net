@@ -60,7 +60,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteAnnotationOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Annotation annotation)
     {
-        if (annotation != null)
+        if (annotation is not null)
         {
             jsonWriter.WritePropertyName(propertyName);
             JsonSerializer.Serialize(jsonWriter, annotation, CodeListBase.JsonSerializerOptions);
@@ -80,7 +80,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteColumnRefsArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, ColumnRefs columns)
     {
-        if (columns.Count > 0)
+        if (columns is not null && columns.Count > 0)
         {
             jsonWriter.WritePropertyName(propertyName);
             jsonWriter.WriteStartArray();
@@ -94,7 +94,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteDefaultKeyOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Key defaultKey)
     {
-        if (defaultKey != null)
+        if (defaultKey is not null)
         {
             jsonWriter.WritePropertyName(propertyName);
             jsonWriter.WriteStartObject();
@@ -105,7 +105,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteDocumentRefArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, ExternalCodeListBaseRefs members)
     {
-        if (members.Count > 0)
+        if (members is not null && members.Count > 0)
         {
             jsonWriter.WritePropertyName(propertyName);
             jsonWriter.WriteStartArray();
@@ -119,7 +119,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteForeignKeyArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, ForeignKeys foreignkeys)
     {
-        if (foreignkeys.Count > 0)
+        if (foreignkeys is not null && foreignkeys.Count > 0)
         {
             jsonWriter.WritePropertyName(propertyName);
             jsonWriter.WriteStartArray();
@@ -133,7 +133,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteIdentification(this Utf8JsonWriter jsonWriter, string propertyName, Identification identification)
     {
-        if (identification != null)
+        if (identification is not null)
         {
             jsonWriter.WritePropertyName(propertyName);
             JsonSerializer.Serialize(jsonWriter, identification, CodeListBase.JsonSerializerOptions);
@@ -146,7 +146,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteKeyArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, Keys keys)
     {
-        if (keys.Count > 0)
+        if (keys is not null && keys.Count > 0)
         {
             jsonWriter.WritePropertyName(propertyName);
             jsonWriter.WriteStartArray();
@@ -160,7 +160,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteReference(this Utf8JsonWriter jsonWriter, string propertyName, ExternalKeyRef reference)
     {
-        if (reference != null)
+        if (reference is not null)
         {
             jsonWriter.WritePropertyName(propertyName);
             JsonSerializer.Serialize(jsonWriter, reference, CodeListBase.JsonSerializerOptions);
@@ -184,7 +184,7 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteStringArrayOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, IList<string> list)
     {
-        if (list.Count > 0)
+        if (list is not null && list.Count > 0)
         {
             jsonWriter.WritePropertyName(propertyName);
             jsonWriter.WriteStartArray();
@@ -198,18 +198,18 @@ public static class Utf8JsonWriterExtensions
 
     public static void WriteStringOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, string value)
     {
-        if (value != null)
+        if (value is not null)
         {
             jsonWriter.WriteString(propertyName, value);
         }
     }
 
-    public static void WriteStringOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, LocalizableString value)
+    public static void WriteStringOrNothing(this Utf8JsonWriter jsonWriter, string propertyName, LocalizableString obj)
     {
-        if (value != null)
+        if (obj is not null)
         {
             jsonWriter.WritePropertyName(propertyName);
-            JsonSerializer.Serialize(jsonWriter, value, CodeListBase.JsonSerializerOptions);
+            JsonSerializer.Serialize(jsonWriter, obj, CodeListBase.JsonSerializerOptions);
         }
     }
 }

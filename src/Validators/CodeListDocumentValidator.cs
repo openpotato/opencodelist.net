@@ -1,16 +1,18 @@
-﻿#region OpenCodeList.NET - Copyright (c) STÜBER SYSTEMS GmbH
-/*    
- *    OpenCodeList.NET 
- *    
+#region OpenCodeList.NET - Copyright (c) STÜBER SYSTEMS GmbH
+/*
+ *    OpenCodeList.NET
+ *
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
- *    Licensed under the MIT License. 
- * 
+ *    Licensed under the MIT License.
+ *    
  */
 #endregion
 
+using FluentValidation;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -18,598 +20,144 @@ using System.Text.RegularExpressions;
 namespace OpenCodeList;
 
 /// <summary>
-/// An abstract OpenCodeList base class for <see cref="CodeListDocument"/> and
-/// <see cref="CodeListSetDocument"/> 
+/// FluentValidation validator for <see cref="CodeListDocument"/> instances.
 /// </summary>
-public sealed class CodeListDocumentValidator : CodeListBaseValidator
+public sealed class CodeListDocumentValidator : CodeListBaseValidator<CodeListDocument>
 {
-    private readonly CodeListDocument _document;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="CodeListDocumentValidator"/> class.
     /// </summary>
-    public CodeListDocumentValidator(CodeListDocument document)
-        : base(document)
+    public CodeListDocumentValidator()
     {
-        _document = document;
+        RuleFor(document => document.Columns)
+            .Must(columns => columns.Count > 0)
+            .WithMessage("At least one column must be defined.")
+            .OverridePropertyName($"{PropertyNames.ColumnSet}.{PropertyNames.Columns}");
+
+        RuleForEach(document => document.Columns)
+            .SetValidator(new ColumnValidator())
+            .OverridePropertyName($"{PropertyNames.ColumnSet}.{PropertyNames.Columns}");
+
+        RuleForEach(document => document.Keys)
+            .SetValidator(new KeyValidator())
+            .OverridePropertyName($"{PropertyNames.ColumnSet}.{PropertyNames.Keys}");
+
+        RuleForEach(document => document.ForeignKeys)
+            .SetValidator(new ForeignKeyValidator())
+            .OverridePropertyName($"{PropertyNames.ColumnSet}.{PropertyNames.ForeignKeys}");
+
+        RuleFor(document => document.Columns)
+            .Custom(ValidateUniqueColumnIds);
+
+        RuleFor(document => document.Keys)
+            .Custom(ValidateUniqueKeyIds);
+
+        RuleFor(document => document.ForeignKeys)
+            .Custom(ValidateUniqueForeignKeyIds);
+
+        RuleFor(document => document)
+            .Custom(ValidateDefaultKey);
+
+        RuleFor(document => document)
+            .Custom(ValidateRows);
+
+        RuleFor(document => document)
+            .Custom(ValidateUniqueKeyValues);
+
+        RuleFor(document => document)
+            .Must(document => !document.MetaOnly || document.Rows.Count == 0)
+            .WithMessage($"Meta document must not contain '{PropertyNames.DataSet}.{PropertyNames.Rows}'.");
     }
 
     /// <summary>
-    /// Validates the <see cref="CodeListDocument"/> instance.
+    /// Validates that the default key of the document references a key that belongs to the document.
     /// </summary>
-    public override void Validate()
+    private static void ValidateDefaultKey(CodeListDocument document, ValidationContext<CodeListDocument> context)
     {
-        base.Validate();
-
-        ValidateColumns();
-        ValidateKeys();
-        ValidateForeignKeys();
-        ValidateRows();
-        ValidateKeyValuesUnique();
-
-        if (_document.MetaOnly && _document.Rows.Count > 0)
+        if (document.DefaultKey is not null && !document.Keys.Contains(key => ReferenceEquals(key, document.DefaultKey)))
         {
-            throw new CodeListValidatorException($"Meta document must not contain '{PropertyNames.DataSet}.{PropertyNames.Rows}'.");
-        }
-    }
-
-    /// <summary>
-    /// Validates the enum members in the specified list of <see cref="EnumMember"/> instances.
-    /// </summary>
-    private static void ValidateEnumMembers(IList<EnumMember> members, string columnPath)
-    {
-        if (members is null || members.Count == 0)
-        {
-            throw new CodeListValidatorException($"'{columnPath}.{PropertyNames.Members}' must not be empty.");
-        }
-
-        var values = new HashSet<string>(StringComparer.Ordinal);
-
-        for (var i = 0; i < members.Count; i++)
-        {
-            var member = members[i];
-            var path = $"{columnPath}.{PropertyNames.Members}[{i}]";
-
-            if (member is null)
-            {
-                throw new CodeListValidatorException($"'{path}' must not be null.");
-            }
-
-            ValidateRequiredString(member.Value, $"{path}.{PropertyNames.Value}");
-            ValidateLocalizableString(member.Description, $"{path}.{PropertyNames.Description}", false);
-
-            if (!values.Add(member.Value))
-            {
-                throw new CodeListValidatorException($"Enum member value '{member.Value}' must be unique in '{columnPath}.{PropertyNames.Members}'.");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Validates the bounds of a <see cref="NumberColumn"/> instance.
-    /// </summary>
-    private static void ValidateNumberBounds(NumberColumn numberColumn, string path)
-    {
-        if (numberColumn.MinValue is not null && numberColumn.MaxValue is not null && numberColumn.MinValue > numberColumn.MaxValue)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.MinValue}' must be less than or equal to '{path}.{PropertyNames.MaxValue}'.");
-        }
-
-        if (numberColumn.ExclusiveMinValue is not null && numberColumn.MaxValue is not null && numberColumn.ExclusiveMinValue >= numberColumn.MaxValue)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.ExclusiveMinValue}' must be less than '{path}.{PropertyNames.MaxValue}'.");
-        }
-
-        if (numberColumn.MinValue is not null && numberColumn.ExclusiveMaxValue is not null && numberColumn.MinValue >= numberColumn.ExclusiveMaxValue)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.MinValue}' must be less than '{path}.{PropertyNames.ExclusiveMaxValue}'.");
-        }
-
-        if (numberColumn.ExclusiveMinValue is not null && numberColumn.ExclusiveMaxValue is not null && numberColumn.ExclusiveMinValue >= numberColumn.ExclusiveMaxValue)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.ExclusiveMinValue}' must be less than '{path}.{PropertyNames.ExclusiveMaxValue}'.");
+            context.AddFailure(
+                $"{PropertyNames.ColumnSet}.{PropertyNames.DefaultKey}",
+                "Default key must reference a key that belongs to this document.");
         }
     }
 
     /// <summary>
-    /// Validates the value of a specific column in a row of the <see cref="CodeListDocument"/> instance.
+    /// Validates that the value of an enum-set column is an array of strings, each of which is a valid member of the enum set.
     /// </summary>
-    private static void ValidateRowValue(Column column, object value, int rowIndex)
+    private static void ValidateEnumSetValue(EnumSetColumn column, object value, string path, ValidationContext<CodeListDocument> context)
     {
-        var path = $"{PropertyNames.DataSet}.{PropertyNames.Rows}[{rowIndex}].{column.Id}";
-
-        if (value is null)
+        if (value is not IEnumerable<string> enumValues)
         {
-            if (column.Nullable == true)
-            {
-                return;
-            }
-
-            throw new CodeListValidatorException($"'{path}' must not be null.");
+            context.AddFailure(path, "Value must be an array of strings.");
+            return;
         }
 
-        switch (column)
+        var allowedValues = new HashSet<string>(
+            column.Members.Where(member => member is not null).Select(member => member.Value),
+            StringComparer.Ordinal);
+        var usedValues = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var enumValue in enumValues)
         {
-            case StringColumn stringColumn:
-                ValidateStringColumnValue(stringColumn, value, path);
-                break;
+            if (enumValue is null)
+            {
+                context.AddFailure(path, "Enum-set value must not be null.");
+                continue;
+            }
 
-            case BooleanColumn:
-                if (value is not bool)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a boolean value.");
-                }
-                break;
+            if (!usedValues.Add(enumValue))
+            {
+                context.AddFailure(path, $"Enum-set value '{enumValue}' must not occur more than once.");
+            }
 
-            case IntegerColumn integerColumn:
-                if (value is not long integerValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be an integer value.");
-                }
-
-                if (integerColumn.MinValue is not null && integerValue < integerColumn.MinValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be greater than or equal to {integerColumn.MinValue}.");
-                }
-
-                if (integerColumn.MaxValue is not null && integerValue > integerColumn.MaxValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be less than or equal to {integerColumn.MaxValue}.");
-                }
-                break;
-
-            case NumberColumn numberColumn:
-                if (value is not decimal decimalValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a decimal value.");
-                }
-
-                if (numberColumn.MinValue is not null && decimalValue < numberColumn.MinValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be greater than or equal to {numberColumn.MinValue}.");
-                }
-
-                if (numberColumn.ExclusiveMinValue is not null && decimalValue <= numberColumn.ExclusiveMinValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be greater than {numberColumn.ExclusiveMinValue}.");
-                }
-
-                if (numberColumn.MaxValue is not null && decimalValue > numberColumn.MaxValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be less than or equal to {numberColumn.MaxValue}.");
-                }
-
-                if (numberColumn.ExclusiveMaxValue is not null && decimalValue >= numberColumn.ExclusiveMaxValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be less than {numberColumn.ExclusiveMaxValue}.");
-                }
-                break;
-
-            case DateTimeColumn dateTimeColumn:
-                if (value is not DateTimeOffset dateTimeValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a date-time value.");
-                }
-
-                if (dateTimeColumn.MinValue is not null && dateTimeValue < dateTimeColumn.MinValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be greater than or equal to {dateTimeColumn.MinValue}.");
-                }
-
-                if (dateTimeColumn.MaxValue is not null && dateTimeValue > dateTimeColumn.MaxValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be less than or equal to {dateTimeColumn.MaxValue}.");
-                }
-                break;
-
-            case DateOnlyColumn dateOnlyColumn:
-                if (value is not DateOnly dateOnlyValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a date value.");
-                }
-
-                if (dateOnlyColumn.MinValue is not null && dateOnlyValue < dateOnlyColumn.MinValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be greater than or equal to {dateOnlyColumn.MinValue}.");
-                }
-
-                if (dateOnlyColumn.MaxValue is not null && dateOnlyValue > dateOnlyColumn.MaxValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be less than or equal to {dateOnlyColumn.MaxValue}.");
-                }
-                break;
-
-            case TimeOnlyColumn timeOnlyColumn:
-                if (value is not TimeOnly timeOnlyValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a time value.");
-                }
-
-                if (timeOnlyColumn.MinValue is not null && timeOnlyValue < timeOnlyColumn.MinValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be greater than or equal to {timeOnlyColumn.MinValue}.");
-                }
-
-                if (timeOnlyColumn.MaxValue is not null && timeOnlyValue > timeOnlyColumn.MaxValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be less than or equal to {timeOnlyColumn.MaxValue}.");
-                }
-                break;
-
-            case EnumColumn enumColumn:
-                if (value is not string enumValue)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a string value.");
-                }
-
-                if (!enumColumn.Members.Any(m => m.Value == enumValue))
-                {
-                    throw new CodeListValidatorException($"'{path}' contains undefined enum value '{enumValue}'.");
-                }
-                break;
-
-            case EnumSetColumn enumSetColumn:
-                if (value is not IEnumerable<string> enumValues)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be an array of strings.");
-                }
-
-                var allowedValues = new HashSet<string>(enumSetColumn.Members.Select(m => m.Value), StringComparer.Ordinal);
-                var usedValues = new HashSet<string>(StringComparer.Ordinal);
-
-                foreach (var enumSetValue in enumValues)
-                {
-                    ValidateRequiredString(enumSetValue, path, false);
-
-                    if (!usedValues.Add(enumSetValue))
-                    {
-                        throw new CodeListValidatorException($"'{path}' must not contain duplicate enum values.");
-                    }
-
-                    if (!allowedValues.Contains(enumSetValue))
-                    {
-                        throw new CodeListValidatorException($"'{path}' contains undefined enum value '{enumSetValue}'.");
-                    }
-                }
-                break;
-
-            case JsonColumn:
-                if (value is not JsonObject && value is not JsonArray)
-                {
-                    throw new CodeListValidatorException($"'{path}' must be a JSON object or JSON array.");
-                }
-                break;
-
-            default:
-                throw new CodeListValidatorException($"'{path}' uses an unsupported column type.");
+            if (!allowedValues.Contains(enumValue))
+            {
+                context.AddFailure(path, $"Undefined enum value '{enumValue}'.");
+            }
         }
     }
 
     /// <summary>
-    /// Validates the value of a <see cref="StringColumn"/> instance, which can be either a string or a localized object.
+    /// Validates the rows of the document.
     /// </summary>
-    private static void ValidateStringColumnValue(StringColumn stringColumn, object value, string path)
+    private static void ValidateRows(CodeListDocument document, ValidationContext<CodeListDocument> context)
     {
-        switch (value)
+        for (var rowIndex = 0; rowIndex < document.Rows.Count; rowIndex++)
         {
-            case string stringValue:
-                ValidateStringValueAgainstStringColumn(stringColumn, stringValue, path);
-                break;
+            var row = document.Rows[rowIndex];
+            var rowPath = $"{PropertyNames.DataSet}.{PropertyNames.Rows}[{rowIndex}]";
 
-            case IDictionary<string, string> localizedValue:
-                if (localizedValue.Count == 0)
-                {
-                    throw new CodeListValidatorException($"'{path}' must contain at least one localized value.");
-                }
-
-                foreach (var localizedEntry in localizedValue)
-                {
-                    ValidateLanguageTag(localizedEntry.Key, $"{path}[{localizedEntry.Key}]", true);
-                    ValidateStringValueAgainstStringColumn(stringColumn, localizedEntry.Value, $"{path}[{localizedEntry.Key}]");
-                }
-                break;
-
-            default:
-                throw new CodeListValidatorException($"'{path}' must be a string or localized object.");
-        }
-    }
-
-    /// <summary>
-    /// Validates the minimum and maximum length of a <see cref="StringColumn"/> instance.
-    /// </summary>
-    private static void ValidateStringLengthRange(int? minLength, int? maxLength, string path)
-    {
-        if (minLength is not null && minLength < 0)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.MinLength}' must be greater than or equal to 0.");
-        }
-
-        if (maxLength is not null && maxLength < 0)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.MaxLength}' must be greater than or equal to 0.");
-        }
-
-        if (minLength is not null && maxLength is not null && minLength > maxLength)
-        {
-            throw new CodeListValidatorException($"'{path}.{PropertyNames.MinLength}' must be less than or equal to '{path}.{PropertyNames.MaxLength}'.");
-        }
-    }
-
-    /// <summary>
-    /// Validates a string value against the constraints of a <see cref="StringColumn"/> instance, including minimum and maximum length and pattern matching.
-    /// </summary>
-    private static void ValidateStringValueAgainstStringColumn(StringColumn column, string value, string path)
-    {
-        ValidateRequiredString(value, path, false);
-
-        if (column.MinLength is not null && value.Length < column.MinLength)
-        {
-            throw new CodeListValidatorException($"'{path}' must have a minimum length of {column.MinLength}.");
-        }
-
-        if (column.MaxLength is not null && value.Length > column.MaxLength)
-        {
-            throw new CodeListValidatorException($"'{path}' must have a maximum length of {column.MaxLength}.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(column.Pattern) && !Regex.IsMatch(value, column.Pattern, RegexOptions.CultureInvariant))
-        {
-            throw new CodeListValidatorException($"'{path}' does not match pattern '{column.Pattern}'.");
-        }
-    }
-
-    /// <summary>
-    /// Validates the columns in the <see cref="CodeListDocument"/> instance.
-    /// </summary>
-    private void ValidateColumns()
-    {
-        if (_document.Columns.Count == 0)
-        {
-            throw new CodeListValidatorException($"'{PropertyNames.ColumnSet}.{PropertyNames.Columns}' must contain at least one column.");
-        }
-
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-
-        for (var i = 0; i < _document.Columns.Count; i++)
-        {
-            var column = _document.Columns[i];
-            var path = $"{PropertyNames.ColumnSet}.{PropertyNames.Columns}[{i}]";
-
-            if (column is null)
+            if (row is null)
             {
-                throw new CodeListValidatorException($"'{path}' must not be null.");
+                context.AddFailure(rowPath, "Row must not be null.");
+                continue;
             }
 
-            ValidateRequiredString(column.Id, $"{path}.{PropertyNames.Id}");
-            if (!ids.Add(column.Id))
-            {
-                throw new CodeListValidatorException($"Column ID '{column.Id}' must be unique.");
-            }
-
-            ValidateLocalizableString(column.Name, $"{path}.{PropertyNames.Name}", true);
-            ValidateLocalizableString(column.Description, $"{path}.{PropertyNames.Description}", false);
-
-            switch (column)
-            {
-                case StringColumn stringColumn:
-                    ValidateLanguageTag(stringColumn.Language, $"{path}.{PropertyNames.Language}", false);
-                    ValidateStringLengthRange(stringColumn.MinLength, stringColumn.MaxLength, path);
-                    break;
-
-                case EnumColumn enumColumn:
-                    ValidateLanguageTag(enumColumn.Language, $"{path}.{PropertyNames.Language}", false);
-                    ValidateEnumMembers(enumColumn.Members, path);
-                    break;
-
-                case EnumSetColumn enumSetColumn:
-                    ValidateLanguageTag(enumSetColumn.Language, $"{path}.{PropertyNames.Language}", false);
-                    ValidateEnumMembers(enumSetColumn.Members, path);
-                    break;
-
-                case IntegerColumn integerColumn:
-                    if (integerColumn.MinValue is not null && integerColumn.MaxValue is not null && integerColumn.MinValue > integerColumn.MaxValue)
-                    {
-                        throw new CodeListValidatorException($"'{path}.{PropertyNames.MinValue}' must be less than or equal to '{path}.{PropertyNames.MaxValue}'.");
-                    }
-                    break;
-
-                case NumberColumn numberColumn:
-                    ValidateNumberBounds(numberColumn, path);
-                    break;
-
-                case DateOnlyColumn dateOnlyColumn:
-                    if (dateOnlyColumn.MinValue is not null && dateOnlyColumn.MaxValue is not null && dateOnlyColumn.MinValue > dateOnlyColumn.MaxValue)
-                    {
-                        throw new CodeListValidatorException($"'{path}.{PropertyNames.MinValue}' must be less than or equal to '{path}.{PropertyNames.MaxValue}'.");
-                    }
-                    break;
-
-                case DateTimeColumn dateTimeColumn:
-                    if (dateTimeColumn.MinValue is not null && dateTimeColumn.MaxValue is not null && dateTimeColumn.MinValue > dateTimeColumn.MaxValue)
-                    {
-                        throw new CodeListValidatorException($"'{path}.{PropertyNames.MinValue}' must be less than or equal to '{path}.{PropertyNames.MaxValue}'.");
-                    }
-                    break;
-
-                case TimeOnlyColumn timeOnlyColumn:
-                    if (timeOnlyColumn.MinValue is not null && timeOnlyColumn.MaxValue is not null && timeOnlyColumn.MinValue > timeOnlyColumn.MaxValue)
-                    {
-                        throw new CodeListValidatorException($"'{path}.{PropertyNames.MinValue}' must be less than or equal to '{path}.{PropertyNames.MaxValue}'.");
-                    }
-                    break;
-
-                case BooleanColumn:
-                case JsonColumn:
-                    break;
-
-                default:
-                    throw new CodeListValidatorException($"'{path}' contains an unsupported column type.");
-            }
-        }
-    }
-    /// <summary>
-    /// Validates the foreign keys in the <see cref="CodeListDocument"/> instance.
-    /// </summary>
-    private void ValidateForeignKeys()
-    {
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-
-        for (var i = 0; i < _document.ForeignKeys.Count; i++)
-        {
-            var foreignKey = _document.ForeignKeys[i];
-            var path = $"{PropertyNames.ColumnSet}.{PropertyNames.ForeignKeys}[{i}]";
-
-            if (foreignKey is null)
-            {
-                throw new CodeListValidatorException($"'{path}' must not be null.");
-            }
-
-            ValidateRequiredString(foreignKey.Id, $"{path}.{PropertyNames.Id}");
-            if (!ids.Add(foreignKey.Id))
-            {
-                throw new CodeListValidatorException($"Foreign key ID '{foreignKey.Id}' must be unique.");
-            }
-
-            ValidateLocalizableString(foreignKey.Name, $"{path}.{PropertyNames.Name}", false);
-            ValidateLocalizableString(foreignKey.Description, $"{path}.{PropertyNames.Description}", false);
-
-            if (foreignKey.Columns.Count == 0)
-            {
-                throw new CodeListValidatorException($"'{path}.{PropertyNames.ColumnIds}' must not be empty.");
-            }
-
-            if (foreignKey.KeyRef is null)
-            {
-                throw new CodeListValidatorException($"'{path}.{PropertyNames.KeyRef}' must not be null.");
-            }
-
-            ValidateRequiredString(foreignKey.KeyRef.KeyId, $"{path}.{PropertyNames.KeyRef}.{PropertyNames.KeyId}");
-            ValidateExternalCodeListRef(foreignKey.KeyRef.CodeListRef, $"{path}.{PropertyNames.KeyRef}.{PropertyNames.CodeListRef}");
-        }
-    }
-
-    /// <summary>
-    /// Validates the keys in the <see cref="CodeListDocument"/> instance.
-    /// </summary>
-    private void ValidateKeys()
-    {
-        if (_document.Keys.Count == 0)
-        {
-            throw new CodeListValidatorException($"'{PropertyNames.ColumnSet}.{PropertyNames.Keys}' must contain at least one key.");
-        }
-
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-
-        for (var i = 0; i < _document.Keys.Count; i++)
-        {
-            var key = _document.Keys[i];
-            var path = $"{PropertyNames.ColumnSet}.{PropertyNames.Keys}[{i}]";
-
-            if (key is null)
-            {
-                throw new CodeListValidatorException($"'{path}' must not be null.");
-            }
-
-            ValidateRequiredString(key.Id, $"{path}.{PropertyNames.Id}");
-            if (!ids.Add(key.Id))
-            {
-                throw new CodeListValidatorException($"Key ID '{key.Id}' must be unique.");
-            }
-
-            ValidateLocalizableString(key.Name, $"{path}.{PropertyNames.Name}", false);
-            ValidateLocalizableString(key.Description, $"{path}.{PropertyNames.Description}", false);
-
-            if (key.Columns.Count == 0)
-            {
-                throw new CodeListValidatorException($"'{path}.{PropertyNames.ColumnIds}' must not be empty.");
-            }
-
-            var keyColumnIds = new HashSet<string>(StringComparer.Ordinal);
-            for (var j = 0; j < key.Columns.Count; j++)
-            {
-                var column = key.Columns[j] ?? throw new CodeListValidatorException($"'{path}.{PropertyNames.ColumnIds}[{j}]' must not be null.");
-                if (!keyColumnIds.Add(column.Id))
-                {
-                    throw new CodeListValidatorException($"'{path}.{PropertyNames.ColumnIds}' must not contain duplicate column IDs.");
-                }
-
-                if (column.Optional == true)
-                {
-                    throw new CodeListValidatorException($"Column '{column.Id}' is part of key '{key.Id}' and therefore must not be optional.");
-                }
-
-                if (column.Nullable == true)
-                {
-                    throw new CodeListValidatorException($"Column '{column.Id}' is part of key '{key.Id}' and therefore must not be nullable.");
-                }
-            }
-        }
-
-        if (_document.DefaultKey is not null && !_document.Keys.Contains(x => ReferenceEquals(x, _document.DefaultKey)))
-        {
-            throw new CodeListValidatorException($"'{PropertyNames.ColumnSet}.{PropertyNames.DefaultKey}' references a key that does not belong to this document.");
-        }
-    }
-
-    /// <summary>
-    /// Validates that the key values in the <see cref="CodeListDocument"/> instance are unique across all rows.
-    /// </summary>
-    private void ValidateKeyValuesUnique()
-    {
-        for (var keyIndex = 0; keyIndex < _document.Keys.Count; keyIndex++)
-        {
-            var key = _document.Keys[keyIndex];
-            var values = new HashSet<string>(StringComparer.Ordinal);
-
-            for (var rowIndex = 0; rowIndex < _document.Rows.Count; rowIndex++)
-            {
-                var row = _document.Rows[rowIndex];
-                var keyParts = new string[key.Columns.Count];
-
-                for (var columnIndex = 0; columnIndex < key.Columns.Count; columnIndex++)
-                {
-                    var column = key.Columns[columnIndex];
-                    var keyValue = row[column.Id];
-                    keyParts[columnIndex] = keyValue?.ToString() ?? string.Empty;
-                }
-
-                var compoundKey = string.Join("\u001F", keyParts);
-                if (!values.Add(compoundKey))
-                {
-                    throw new CodeListValidatorException($"Duplicate key value detected for key '{key.Id}' in row {rowIndex}.");
-                }
-            }
-        }
-    }
-    /// <summary>
-    /// Validates the rows in the <see cref="CodeListDocument"/> instance.
-    /// </summary>
-    private void ValidateRows()
-    {
-        for (var rowIndex = 0; rowIndex < _document.Rows.Count; rowIndex++)
-        {
-            var row = _document.Rows[rowIndex] ?? throw new CodeListValidatorException($"'{PropertyNames.DataSet}.{PropertyNames.Rows}[{rowIndex}]' must not be null.");
             var presentColumns = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var valuePair in row)
             {
                 var columnId = valuePair.Key;
+                var valuePath = $"{rowPath}.{columnId}";
+
                 if (!presentColumns.Add(columnId))
                 {
-                    throw new CodeListValidatorException($"Duplicate column '{columnId}' in row {rowIndex}.");
+                    context.AddFailure(valuePath, $"Column '{columnId}' must not occur more than once in a row.");
+                    continue;
                 }
 
-                if (!_document.Columns.TryFind(x => x.Id == columnId, out var column))
+                if (!document.Columns.TryFind(column => column.Id == columnId, out var column))
                 {
-                    throw new CodeListValidatorException($"Column with ID '{columnId}' not found for row {rowIndex}.");
+                    context.AddFailure(valuePath, $"Column with ID '{columnId}' is not defined.");
+                    continue;
                 }
 
-                ValidateRowValue(column, valuePair.Value, rowIndex);
+                ValidateRowValue(column, valuePair.Value, valuePath, context);
             }
 
-            for (var columnIndex = 0; columnIndex < _document.Columns.Count; columnIndex++)
+            foreach (var column in document.Columns)
             {
-                var column = _document.Columns[columnIndex];
                 if (column.Optional == true)
                 {
                     continue;
@@ -617,9 +165,713 @@ public sealed class CodeListDocumentValidator : CodeListBaseValidator
 
                 if (!presentColumns.Contains(column.Id))
                 {
-                    throw new CodeListValidatorException($"Required column '{column.Id}' is missing in row {rowIndex}.");
+                    context.AddFailure($"{rowPath}.{column.Id}", $"Required column '{column.Id}' is missing.");
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Validates the value of a row for a specific column, checking for type correctness and constraints defined by the column.
+    /// </summary>
+    private static void ValidateRowValue(Column column, object value, string path, ValidationContext<CodeListDocument> context)
+    {
+        if (value is null)
+        {
+            if (column.Nullable != true)
+            {
+                context.AddFailure(path, "Value must not be null.");
+            }
+            return;
+        }
+
+        switch (column)
+        {
+            case StringColumn stringColumn:
+                ValidateStringColumnValue(stringColumn, value, path, context);
+                break;
+
+            case BooleanColumn:
+                if (value is not bool)
+                {
+                    context.AddFailure(path, "Value must be a boolean.");
+                }
+                break;
+
+            case IntegerColumn integerColumn:
+                if (value is not long integerValue)
+                {
+                    context.AddFailure(path, "Value must be an integer.");
+                    break;
+                }
+
+                if (integerColumn.MinValue is not null && integerValue < integerColumn.MinValue)
+                {
+                    context.AddFailure(path, $"Value must be greater than or equal to {integerColumn.MinValue}.");
+                }
+
+                if (integerColumn.MaxValue is not null && integerValue > integerColumn.MaxValue)
+                {
+                    context.AddFailure(path, $"Value must be less than or equal to {integerColumn.MaxValue}.");
+                }
+                break;
+
+            case NumberColumn numberColumn:
+                if (value is not decimal decimalValue)
+                {
+                    context.AddFailure(path, "Value must be a decimal number.");
+                    break;
+                }
+
+                if (numberColumn.MinValue is not null && decimalValue < numberColumn.MinValue)
+                {
+                    context.AddFailure(path, $"Value must be greater than or equal to {numberColumn.MinValue}.");
+                }
+
+                if (numberColumn.ExclusiveMinValue is not null && decimalValue <= numberColumn.ExclusiveMinValue)
+                {
+                    context.AddFailure(path, $"Value must be greater than {numberColumn.ExclusiveMinValue}.");
+                }
+
+                if (numberColumn.MaxValue is not null && decimalValue > numberColumn.MaxValue)
+                {
+                    context.AddFailure(path, $"Value must be less than or equal to {numberColumn.MaxValue}.");
+                }
+
+                if (numberColumn.ExclusiveMaxValue is not null && decimalValue >= numberColumn.ExclusiveMaxValue)
+                {
+                    context.AddFailure(path, $"Value must be less than {numberColumn.ExclusiveMaxValue}.");
+                }
+                break;
+
+            case DateTimeColumn dateTimeColumn:
+                if (value is not DateTimeOffset dateTimeValue)
+                {
+                    context.AddFailure(path, "Value must be a date-time.");
+                    break;
+                }
+
+                if (dateTimeColumn.MinValue is not null && dateTimeValue < dateTimeColumn.MinValue)
+                {
+                    context.AddFailure(path, $"Value must be greater than or equal to {dateTimeColumn.MinValue}.");
+                }
+
+                if (dateTimeColumn.MaxValue is not null && dateTimeValue > dateTimeColumn.MaxValue)
+                {
+                    context.AddFailure(path, $"Value must be less than or equal to {dateTimeColumn.MaxValue}.");
+                }
+                break;
+
+            case DateOnlyColumn dateOnlyColumn:
+                if (value is not DateOnly dateOnlyValue)
+                {
+                    context.AddFailure(path, "Value must be a date.");
+                    break;
+                }
+
+                if (dateOnlyColumn.MinValue is not null && dateOnlyValue < dateOnlyColumn.MinValue)
+                {
+                    context.AddFailure(path, $"Value must be greater than or equal to {dateOnlyColumn.MinValue}.");
+                }
+
+                if (dateOnlyColumn.MaxValue is not null && dateOnlyValue > dateOnlyColumn.MaxValue)
+                {
+                    context.AddFailure(path, $"Value must be less than or equal to {dateOnlyColumn.MaxValue}.");
+                }
+                break;
+
+            case TimeOnlyColumn timeOnlyColumn:
+                if (value is not TimeOnly timeOnlyValue)
+                {
+                    context.AddFailure(path, "Value must be a time.");
+                    break;
+                }
+
+                if (timeOnlyColumn.MinValue is not null && timeOnlyValue < timeOnlyColumn.MinValue)
+                {
+                    context.AddFailure(path, $"Value must be greater than or equal to {timeOnlyColumn.MinValue}.");
+                }
+
+                if (timeOnlyColumn.MaxValue is not null && timeOnlyValue > timeOnlyColumn.MaxValue)
+                {
+                    context.AddFailure(path, $"Value must be less than or equal to {timeOnlyColumn.MaxValue}.");
+                }
+                break;
+
+            case EnumColumn enumColumn:
+                if (value is not string enumValue)
+                {
+                    context.AddFailure(path, "Value must be a string.");
+                }
+                else if (!enumColumn.Members.Any(member => member?.Value == enumValue))
+                {
+                    context.AddFailure(path, $"Undefined enum value '{enumValue}'.");
+                }
+                break;
+
+            case EnumSetColumn enumSetColumn:
+                ValidateEnumSetValue(enumSetColumn, value, path, context);
+                break;
+
+            case JsonColumn:
+                if (value is not JsonObject && value is not JsonArray)
+                {
+                    context.AddFailure(path, "Value must be a JSON object or JSON array.");
+                }
+                break;
+
+            default:
+                context.AddFailure(path, "Unsupported column type.");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Validates the value of a string column, which can be either a single string or a localized string object.
+    /// </summary>
+    private static void ValidateStringColumnValue(StringColumn column, object value, string path, ValidationContext<CodeListDocument> context)
+    {
+        switch (value)
+        {
+            case string stringValue:
+                ValidateStringValue(column, stringValue, path, context);
+                break;
+
+            case IDictionary<string, string> localizedValue:
+                if (localizedValue.Count == 0)
+                {
+                    context.AddFailure(path, "At least one localized value must be specified.");
+                    break;
+                }
+
+                foreach (var entry in localizedValue)
+                {
+                    var localizedPath = $"{path}[{entry.Key}]";
+
+                    if (!ValidatorHelpers.IsLanguageTag(entry.Key))
+                    {
+                        context.AddFailure(localizedPath, "Localized value key must be a valid BCP 47 language tag.");
+                    }
+
+                    ValidateStringValue(column, entry.Value, localizedPath, context);
+                }
+                break;
+
+            default:
+                context.AddFailure(path, "Value must be a string or localized string object.");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Validates a single string value against the constraints defined in a <see cref="StringColumn"/>, such as minimum/maximum length and pattern matching.
+    /// </summary>
+    private static void ValidateStringValue(StringColumn column, string value, string path, ValidationContext<CodeListDocument> context)
+    {
+        if (value is null)
+        {
+            context.AddFailure(path, "Value must not be null.");
+            return;
+        }
+
+        if (column.MinLength is not null && value.Length < column.MinLength)
+        {
+            context.AddFailure(path, $"Value must have a minimum length of {column.MinLength}.");
+        }
+
+        if (column.MaxLength is not null && value.Length > column.MaxLength)
+        {
+            context.AddFailure(path, $"Value must have a maximum length of {column.MaxLength}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(column.Pattern))
+        {
+            try
+            {
+                if (!Regex.IsMatch(value, column.Pattern, RegexOptions.CultureInvariant))
+                {
+                    context.AddFailure(path, $"Value does not match pattern '{column.Pattern}'.");
+                }
+            }
+            catch (ArgumentException)
+            {
+                // Invalid patterns are reported by ColumnValidator. Avoid throwing from validation.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates that all column IDs in the document are unique.
+    /// </summary>
+    private static void ValidateUniqueColumnIds(Columns columns, ValidationContext<CodeListDocument> context)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var index = 0;
+
+        foreach (var column in columns)
+        {
+            if (column is not null && !string.IsNullOrWhiteSpace(column.Id) && !ids.Add(column.Id))
+            {
+                context.AddFailure($"{PropertyNames.ColumnSet}.{PropertyNames.Columns}[{index}].{PropertyNames.Id}", $"Column ID '{column.Id}' must be unique.");
+            }
+            index++;
+        }
+    }
+
+    /// <summary>
+    /// Validates that all foreign key IDs in the document are unique.
+    /// </summary>
+    private static void ValidateUniqueForeignKeyIds(ForeignKeys foreignKeys, ValidationContext<CodeListDocument> context)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var index = 0;
+
+        foreach (var foreignKey in foreignKeys)
+        {
+            if (foreignKey is not null && !string.IsNullOrWhiteSpace(foreignKey.Id) && !ids.Add(foreignKey.Id))
+            {
+                context.AddFailure($"{PropertyNames.ColumnSet}.{PropertyNames.ForeignKeys}[{index}].{PropertyNames.Id}", $"Foreign key ID '{foreignKey.Id}' must be unique.");
+            }
+            index++;
+        }
+    }
+
+    /// <summary>
+    /// Validates that all key IDs in the document are unique.
+    /// </summary>
+    private static void ValidateUniqueKeyIds(Keys keys, ValidationContext<CodeListDocument> context)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var index = 0;
+
+        foreach (var key in keys)
+        {
+            if (key is not null && !string.IsNullOrWhiteSpace(key.Id) && !ids.Add(key.Id))
+            {
+                context.AddFailure($"{PropertyNames.ColumnSet}.{PropertyNames.Keys}[{index}].{PropertyNames.Id}", $"Key ID '{key.Id}' must be unique.");
+            }
+            index++;
+        }
+    }
+
+    /// <summary>
+    /// Validates that the values of the keys in the document are unique across all rows, ensuring that no two rows have the same combination of key values for any defined key.
+    /// </summary>
+    private static void ValidateUniqueKeyValues(CodeListDocument document, ValidationContext<CodeListDocument> context)
+    {
+        foreach (var key in document.Keys)
+        {
+            if (key is null || key.Columns.Count == 0)
+            {
+                continue;
+            }
+
+            var values = new HashSet<string>(StringComparer.Ordinal);
+
+            for (var rowIndex = 0; rowIndex < document.Rows.Count; rowIndex++)
+            {
+                var row = document.Rows[rowIndex];
+                if (row is null)
+                {
+                    continue;
+                }
+
+                var keyParts = new string[key.Columns.Count];
+                var complete = true;
+
+                for (var columnIndex = 0; columnIndex < key.Columns.Count; columnIndex++)
+                {
+                    var column = key.Columns[columnIndex];
+                    if (column is null)
+                    {
+                        complete = false;
+                        break;
+                    }
+
+                    object keyValue;
+                    try
+                    {
+                        keyValue = row[column.Id];
+                    }
+                    catch (ArgumentException)
+                    {
+                        complete = false;
+                        break;
+                    }
+
+                    if (keyValue is null)
+                    {
+                        complete = false;
+                        break;
+                    }
+
+                    keyParts[columnIndex] = Convert.ToString(keyValue, CultureInfo.InvariantCulture) ?? string.Empty;
+                }
+
+                if (!complete)
+                {
+                    continue;
+                }
+
+                var compoundKey = string.Join("\u001F", keyParts);
+                if (!values.Add(compoundKey))
+                {
+                    context.AddFailure(
+                        $"{PropertyNames.DataSet}.{PropertyNames.Rows}[{rowIndex}]",
+                        $"Duplicate key value for key '{key.Id}'.");
+                }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="Column"/> instances
+/// </summary>
+internal sealed class ColumnValidator : AbstractValidator<Column>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ColumnValidator"/> class.
+    /// </summary>
+    public ColumnValidator()
+    {
+        RuleFor(column => column.Id)
+            .NotEmpty()
+            .WithMessage("Column ID must not be empty.")
+            .OverridePropertyName(PropertyNames.Id);
+
+        RuleFor(column => column.Name)
+            .Custom((value, context) => ValidatorHelpers.ValidateLocalizableString(context, PropertyNames.Name, value));
+
+        RuleFor(column => column.Description)
+            .Custom((value, context) => ValidatorHelpers.ValidateOptionalLocalizableString(context, PropertyNames.Description, value));
+
+        RuleFor(column => column)
+            .Custom(ValidateColumnType);
+    }
+
+    /// <summary>
+    /// Validates the specific type of a column, checking for constraints and properties that are unique to each column type.
+    /// </summary>
+    private static void ValidateColumnType(Column column, ValidationContext<Column> context)
+    {
+        switch (column)
+        {
+            case StringColumn stringColumn:
+                ValidateStringColumn(stringColumn, context);
+                break;
+
+            case EnumColumn enumColumn:
+                ValidateEnumColumn(enumColumn.Language, enumColumn.Members, context);
+                break;
+
+            case EnumSetColumn enumSetColumn:
+                ValidateEnumColumn(enumSetColumn.Language, enumSetColumn.Members, context);
+                break;
+
+            case IntegerColumn integerColumn:
+                if (integerColumn.MinValue is not null && integerColumn.MaxValue is not null && integerColumn.MinValue > integerColumn.MaxValue)
+                {
+                    context.AddFailure(PropertyNames.MinValue, "Minimum value must be less than or equal to maximum value.");
+                }
+                break;
+
+            case NumberColumn numberColumn:
+                ValidateNumberColumn(numberColumn, context);
+                break;
+
+            case DateOnlyColumn dateColumn:
+                if (dateColumn.MinValue is not null && dateColumn.MaxValue is not null && dateColumn.MinValue > dateColumn.MaxValue)
+                {
+                    context.AddFailure(PropertyNames.MinValue, "Minimum value must be less than or equal to maximum value.");
+                }
+                break;
+
+            case DateTimeColumn dateTimeColumn:
+                if (dateTimeColumn.MinValue is not null && dateTimeColumn.MaxValue is not null && dateTimeColumn.MinValue > dateTimeColumn.MaxValue)
+                {
+                    context.AddFailure(PropertyNames.MinValue, "Minimum value must be less than or equal to maximum value.");
+                }
+                break;
+
+            case TimeOnlyColumn timeColumn:
+                if (timeColumn.MinValue is not null && timeColumn.MaxValue is not null && timeColumn.MinValue > timeColumn.MaxValue)
+                {
+                    context.AddFailure(PropertyNames.MinValue, "Minimum value must be less than or equal to maximum value.");
+                }
+                break;
+
+            case JsonColumn jsonColumn:
+                if (jsonColumn.SchemaUri is not null && !jsonColumn.SchemaUri.IsAbsoluteUri)
+                {
+                    context.AddFailure(PropertyNames.SchemaUri, "Schema URI must be absolute.");
+                }
+                break;
+
+            case BooleanColumn:
+                break;
+
+            default:
+                context.AddFailure("Unsupported column type.");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Validates the properties of an enum or enum-set column.
+    /// </summary>
+    private static void ValidateEnumColumn(string language, IList<EnumMember> members, ValidationContext<Column> context)
+    {
+        if (!ValidatorHelpers.IsOptionalLanguageTag(language))
+        {
+            context.AddFailure(PropertyNames.Language, "Language must contain a valid BCP 47 language tag.");
+        }
+
+        if (members is null || members.Count == 0)
+        {
+            context.AddFailure(PropertyNames.Members, "At least one enum member must be defined.");
+            return;
+        }
+
+        var values = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var i = 0; i < members.Count; i++)
+        {
+            var member = members[i];
+            if (member is null)
+            {
+                context.AddFailure($"{PropertyNames.Members}[{i}]", "Enum member must not be null.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(member.Value))
+            {
+                context.AddFailure($"{PropertyNames.Members}[{i}].{PropertyNames.Value}", "Enum member value must not be empty.");
+            }
+            else if (!values.Add(member.Value))
+            {
+                context.AddFailure($"{PropertyNames.Members}[{i}].{PropertyNames.Value}", $"Enum member value '{member.Value}' must be unique.");
+            }
+
+            if (member.Description is not null)
+            {
+                switch (member.Description)
+                {
+                    case NonLocalizedString nonLocalized when string.IsNullOrWhiteSpace(nonLocalized.Value):
+                        context.AddFailure($"{PropertyNames.Members}[{i}].{PropertyNames.Description}", "Description must not be empty.");
+                        break;
+                    case LocalizedString localized:
+                        if (localized.Values.Count == 0)
+                        {
+                            context.AddFailure($"{PropertyNames.Members}[{i}].{PropertyNames.Description}", "At least one localized description must be specified.");
+                        }
+                        foreach (var entry in localized.Values)
+                        {
+                            if (!ValidatorHelpers.IsLanguageTag(entry.Key))
+                            {
+                                context.AddFailure($"{PropertyNames.Members}[{i}].{PropertyNames.Description}[{entry.Key}]", "Localized description key must be a valid BCP 47 language tag.");
+                            }
+                            if (entry.Value is null)
+                            {
+                                context.AddFailure($"{PropertyNames.Members}[{i}].{PropertyNames.Description}[{entry.Key}]", "Localized description must not be null.");
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates the properties of a number column.
+    /// </summary>
+    private static void ValidateNumberColumn(NumberColumn column, ValidationContext<Column> context)
+    {
+        if (column.MinValue is not null && column.MaxValue is not null && column.MinValue > column.MaxValue)
+        {
+            context.AddFailure(PropertyNames.MinValue, "Minimum value must be less than or equal to maximum value.");
+        }
+
+        if (column.ExclusiveMinValue is not null && column.MaxValue is not null && column.ExclusiveMinValue >= column.MaxValue)
+        {
+            context.AddFailure(PropertyNames.ExclusiveMinValue, "Exclusive minimum value must be less than maximum value.");
+        }
+
+        if (column.MinValue is not null && column.ExclusiveMaxValue is not null && column.MinValue >= column.ExclusiveMaxValue)
+        {
+            context.AddFailure(PropertyNames.MinValue, "Minimum value must be less than exclusive maximum value.");
+        }
+
+        if (column.ExclusiveMinValue is not null && column.ExclusiveMaxValue is not null && column.ExclusiveMinValue >= column.ExclusiveMaxValue)
+        {
+            context.AddFailure(PropertyNames.ExclusiveMinValue, "Exclusive minimum value must be less than exclusive maximum value.");
+        }
+    }
+
+    /// <summary>
+    /// Validates the properties of a string column.
+    /// </summary>
+    private static void ValidateStringColumn(StringColumn column, ValidationContext<Column> context)
+    {
+        if (!ValidatorHelpers.IsOptionalLanguageTag(column.Language))
+        {
+            context.AddFailure(PropertyNames.Language, "Language must contain a valid BCP 47 language tag.");
+        }
+
+        if (column.MinLength is not null && column.MinLength < 0)
+        {
+            context.AddFailure(PropertyNames.MinLength, "Minimum length must be greater than or equal to 0.");
+        }
+
+        if (column.MaxLength is not null && column.MaxLength < 0)
+        {
+            context.AddFailure(PropertyNames.MaxLength, "Maximum length must be greater than or equal to 0.");
+        }
+
+        if (column.MinLength is not null && column.MaxLength is not null && column.MinLength > column.MaxLength)
+        {
+            context.AddFailure(PropertyNames.MinLength, "Minimum length must be less than or equal to maximum length.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(column.Pattern))
+        {
+            try
+            {
+                _ = new Regex(column.Pattern, RegexOptions.CultureInvariant);
+            }
+            catch (ArgumentException)
+            {
+                context.AddFailure(PropertyNames.Pattern, "Pattern must contain a valid regular expression.");
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="ForeignKey"/> instances
+/// </summary>
+internal sealed class ForeignKeyValidator : AbstractValidator<ForeignKey>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ForeignKeyValidator"/> class.
+    /// </summary>
+    public ForeignKeyValidator()
+    {
+        RuleFor(foreignKey => foreignKey.Id)
+            .NotEmpty()
+            .WithMessage("Foreign key ID must not be empty.")
+            .OverridePropertyName(PropertyNames.Id);
+
+        RuleFor(foreignKey => foreignKey.Name)
+            .Custom((value, context) => ValidatorHelpers.ValidateLocalizableString(context, PropertyNames.Name, value));
+
+        RuleFor(foreignKey => foreignKey.Description)
+            .Custom((value, context) => ValidatorHelpers.ValidateOptionalLocalizableString(context, PropertyNames.Description, value));
+
+        RuleFor(foreignKey => foreignKey.Columns)
+            .Must(columns => columns is not null && columns.Count > 0)
+            .WithMessage("Foreign key must reference at least one column.")
+            .OverridePropertyName(PropertyNames.ColumnIds);
+
+        RuleFor(foreignKey => foreignKey.KeyRef)
+            .NotNull()
+            .WithMessage("Key reference must not be null.")
+            .SetValidator(new ExternalKeyRefValidator())
+            .OverridePropertyName(PropertyNames.KeyRef);
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="Key"/> instances
+/// </summary>
+internal sealed class KeyValidator : AbstractValidator<Key>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="KeyValidator"/> class.
+    /// </summary>
+    public KeyValidator()
+    {
+        RuleFor(key => key.Id)
+            .NotEmpty()
+            .WithMessage("Key ID must not be empty.")
+            .OverridePropertyName(PropertyNames.Id);
+
+        RuleFor(key => key.Name)
+            .Custom((value, context) => ValidatorHelpers.ValidateOptionalLocalizableString(context, PropertyNames.Name, value));
+
+        RuleFor(key => key.Description)
+            .Custom((value, context) => ValidatorHelpers.ValidateOptionalLocalizableString(context, PropertyNames.Description, value));
+
+        RuleFor(key => key.Columns)
+            .Must(columns => columns is not null && columns.Count > 0)
+            .WithMessage("Key must reference at least one column.")
+            .OverridePropertyName(PropertyNames.ColumnIds);
+
+        RuleFor(key => key.Columns)
+            .Custom(ValidateColumns);
+    }
+
+    /// <summary>
+    /// Validates that the columns referenced by a key are valid, ensuring that they are not null, not optional, and not nullable, and that there are no duplicate column IDs.
+    /// </summary>
+    private static void ValidateColumns(ColumnRefs columns, ValidationContext<Key> context)
+    {
+        if (columns is null)
+        {
+            return;
+        }
+
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var index = 0;
+
+        foreach (var column in columns)
+        {
+            if (column is null)
+            {
+                context.AddFailure($"{PropertyNames.ColumnIds}[{index}]", "Referenced column must not be null.");
+                index++;
+                continue;
+            }
+
+            if (!ids.Add(column.Id))
+            {
+                context.AddFailure($"{PropertyNames.ColumnIds}[{index}]", $"Column ID '{column.Id}' must not occur more than once in a key.");
+            }
+
+            if (column.Optional == true)
+            {
+                context.AddFailure($"{PropertyNames.ColumnIds}[{index}]", $"Key column '{column.Id}' must not be optional.");
+            }
+
+            if (column.Nullable == true)
+            {
+                context.AddFailure($"{PropertyNames.ColumnIds}[{index}]", $"Key column '{column.Id}' must not be nullable.");
+            }
+
+            index++;
+        }
+    }
+}
+
+/// <summary>
+/// Validator for <see cref="ExternalKeyRef"/> instances
+/// </summary>
+internal sealed class ExternalKeyRefValidator : AbstractValidator<ExternalKeyRef>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ExternalKeyRefValidator"/> class.
+    /// </summary>
+    public ExternalKeyRefValidator()
+    {
+        RuleFor(reference => reference.KeyId)
+            .NotEmpty()
+            .WithMessage("Key ID must not be empty.")
+            .OverridePropertyName(PropertyNames.KeyId);
+
+        RuleFor(reference => reference.CodeListRef)
+            .NotNull()
+            .WithMessage("Code-list reference must not be null.")
+            .SetValidator(new ExternalCodeListBaseRefValidator())
+            .OverridePropertyName(PropertyNames.CodeListRef);
     }
 }

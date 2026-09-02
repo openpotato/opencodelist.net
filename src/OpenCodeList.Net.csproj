@@ -32,6 +32,7 @@
   <ItemGroup>
     <PackageReference Include="Enbrea.Bcp47.Iana" Version="0.1.0" />
     <PackageReference Include="Enbrea.SemVer" Version="0.3.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
   </ItemGroup>
 
 </Project>

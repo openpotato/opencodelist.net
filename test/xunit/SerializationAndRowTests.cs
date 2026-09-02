@@ -5,9 +5,11 @@
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
  *    Licensed under the MIT License.
+ *    
  */
 #endregion
 
+using FluentValidation.TestHelper;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,14 +20,14 @@ using Xunit;
 namespace OpenCodeList.XUnit;
 
 /// <summary>
-/// Tests for serialization and row handling in the OpenCodeList.NET library.
+/// Tests for serialization and row handling in the library.
 /// </summary>
-public class SerializationAndRowTest
+public class SerializationAndRowTests
 {
     [Fact]
-    public void Annotation_With_AppInfo_Only_Roundtrips()
+    public void Annotation_AppInfoOnly_Roundtrips()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
         document.Annotation = new Annotation
         {
             AppInfo = new JsonObject
@@ -34,14 +36,14 @@ public class SerializationAndRowTest
             }
         };
 
-        document.Validate();
+        new CodeListDocumentValidator().TestValidate(document).ShouldNotHaveAnyValidationErrors();
 
         using var stream = new MemoryStream();
         document.Save(stream, false);
         stream.Position = 0;
 
         var loaded = CodeListDocument.Load(stream);
-        loaded.Validate();
+        new CodeListDocumentValidator().TestValidate(loaded).ShouldNotHaveAnyValidationErrors();
 
         Assert.NotNull(loaded.Annotation.AppInfo);
         Assert.Null(loaded.Annotation.Descriptions);
@@ -49,9 +51,9 @@ public class SerializationAndRowTest
     }
 
     [Fact]
-    public void Clear_Preserves_MetaOnly_State()
+    public void Clear_MetaOnlyDocument_PreservesMetaOnlyState()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
         document.ClearContent(true);
         Assert.True(document.MetaOnly);
 
@@ -61,9 +63,9 @@ public class SerializationAndRowTest
     }
 
     [Fact]
-    public void Localized_Row_Value_Roundtrip_Preserves_All_Languages()
+    public void LocalizedRowValue_Roundtrip_PreservesAllLanguages()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
 
         var nameColumn = document.Columns.Add<StringColumn>();
         nameColumn.Id = "name";
@@ -88,7 +90,7 @@ public class SerializationAndRowTest
         stream.Position = 0;
 
         var loaded = CodeListDocument.Load(stream);
-        loaded.Validate();
+        new CodeListDocumentValidator().TestValidate(loaded).ShouldNotHaveAnyValidationErrors();
 
         var value = Assert.IsType<Dictionary<string, string>>(loaded.Rows[0]["name"]);
         Assert.Equal("Germany", value["en"]);
@@ -96,9 +98,9 @@ public class SerializationAndRowTest
     }
 
     [Fact]
-    public void Row_Assignment_Allows_Null_When_Nullable_Is_True()
+    public void RowAssignment_NullableColumn_AllowsNull()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
 
         var column = document.Columns.Add<StringColumn>();
         column.Id = "text";
@@ -110,14 +112,14 @@ public class SerializationAndRowTest
         row["code"] = "A";
         row["text"] = null;
 
-        document.Validate();
+        new CodeListDocumentValidator().TestValidate(document).ShouldNotHaveAnyValidationErrors();
         Assert.Null(row["text"]);
     }
 
     [Fact]
-    public void Row_Assignment_Rejects_Null_When_Nullable_Is_Omitted()
+    public void RowAssignment_NonNullableColumn_RejectsNull()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
 
         var column = document.Columns.Add<StringColumn>();
         column.Id = "text";
@@ -131,9 +133,9 @@ public class SerializationAndRowTest
     }
 
     [Fact]
-    public void Save_And_Load_Preserves_Publisher_Extensions()
+    public void PublisherExtensions_Roundtrip_PreservesValues()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
         document.Identification.Publisher = new Publisher
         {
             ShortName = "Publisher",
@@ -153,9 +155,9 @@ public class SerializationAndRowTest
     }
 
     [Fact]
-    public void Save_Minimal_Document_Omits_Optional_Null_Properties_And_Writes_Empty_Rows()
+    public void Save_MinimalDocument_OmitsOptionalNullsAndWritesEmptyRows()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
 
         using var stream = new MemoryStream();
         document.Save(stream, false);
@@ -177,9 +179,9 @@ public class SerializationAndRowTest
     }
 
     [Fact]
-    public void Save_Omits_Missing_Optional_Row_Value()
+    public void Save_MissingOptionalRowValue_OmitsProperty()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
 
         var optionalColumn = document.Columns.Add<StringColumn>();
         optionalColumn.Id = "optionalText";
@@ -190,7 +192,7 @@ public class SerializationAndRowTest
         var row = document.Rows.Add();
         row["code"] = "A";
 
-        document.Validate();
+        new CodeListDocumentValidator().TestValidate(document).ShouldNotHaveAnyValidationErrors();
 
         using var stream = new MemoryStream();
         document.Save(stream, false);

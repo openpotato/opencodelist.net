@@ -9,10 +9,10 @@
  */
 #endregion
 
+using FluentValidation.TestHelper;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -21,17 +21,11 @@ namespace OpenCodeList.XUnit;
 /// <summary>
 /// Unit tests for <see cref="CodeListDocument"/>.
 /// </summary>
-public class CodeListTest : IClassFixture<AssetsFixture>
+public class CodeListDocumentTests
 {
-    private readonly string _assetsFolder;
-
-    public CodeListTest(AssetsFixture _)
-    {
-        _assetsFolder = AssetsFixture.GetAssetsFolder();
-    }
 
     [Fact]
-    public async Task Construct_ByCode_Creates_And_Loads_Document()
+    public async Task ConstructAndRoundtrip_ByCode_PreservesDocument()
     {
         var document = new CodeListDocument();
 
@@ -86,7 +80,7 @@ public class CodeListTest : IClassFixture<AssetsFixture>
     }
 
     [Fact]
-    public async Task InMemory_Roundtrip_ByCode_Preserves_Document_Content()
+    public async Task InMemoryRoundtrip_ByCode_PreservesContent()
     {
         var originalDocument = new CodeListDocument();
 
@@ -144,13 +138,13 @@ public class CodeListTest : IClassFixture<AssetsFixture>
     }
 
     [Fact]
-    public async Task Load_Reads_All_Expected_Document_Values()
+    public async Task Load_Asset_ReadsExpectedValues()
     {
         var document = await CodeListDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelist.json"), 
+            TestAssets.GetPath("codelist.json"), 
             TestContext.Current.CancellationToken);
 
-        document.Validate();
+        new CodeListDocumentValidator().TestValidate(document).ShouldNotHaveAnyValidationErrors();
 
         Assert.NotNull(document);
         Assert.False(document.MetaOnly);
@@ -194,22 +188,21 @@ public class CodeListTest : IClassFixture<AssetsFixture>
     }
 
     [Fact]
-    public async Task Save_Writes_And_Loads_Equivalent_Document()
+    public async Task Save_FileRoundtrip_PreservesDocument()
     {
         var originalDocument = await CodeListDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelist.json"), 
+            TestAssets.GetPath("codelist.json"), 
             TestContext.Current.CancellationToken);
 
-        await originalDocument.SaveAsync(
-            Path.Combine(_assetsFolder, "codelist.copy.json"), 
-            TestContext.Current.CancellationToken);
+        using var file = new TemporaryFile();
+        await originalDocument.SaveAsync(file.FilePath, TestContext.Current.CancellationToken);
 
         var copiedDocument = await CodeListDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelist.copy.json"), 
+            file.FilePath,
             TestContext.Current.CancellationToken);
 
-        Assert.Throws<FormatException>(() => { copiedDocument.Rows[0]["bool"] = "string"; });
-        Assert.Throws<FormatException>(() => { copiedDocument.Rows[0]["enumSet"] = "string"; });
+        Assert.Throws<FormatException>(() => copiedDocument.Rows[0]["bool"] = "string");
+        Assert.Throws<FormatException>(() => copiedDocument.Rows[0]["enumSet"] = "string");
 
         Assert.False(originalDocument.MetaOnly);
         Assert.False(copiedDocument.MetaOnly);
@@ -225,7 +218,7 @@ public class CodeListTest : IClassFixture<AssetsFixture>
         Assert.Equal(originalDocument.Rows.Count, copiedDocument.Rows.Count);
         Assert.Equal(originalDocument.Rows[0]["code"] as string, copiedDocument.Rows[0]["code"] as string);
         Assert.Equal(originalDocument.Rows[0]["federalState"] as string, copiedDocument.Rows[0]["federalState"] as string);
-        Assert.Equal(originalDocument.Rows[0]["integer"] as int?, copiedDocument.Rows[0]["integer"] as int?);
+        Assert.Equal(originalDocument.Rows[0]["integer"] as long?, copiedDocument.Rows[0]["integer"] as long?);
         Assert.Equal(originalDocument.Rows[0]["number"] as decimal?, copiedDocument.Rows[0]["number"] as decimal?);
         Assert.Equal(originalDocument.Rows[0]["bool"] as bool?, copiedDocument.Rows[0]["bool"] as bool?);
         Assert.Equal(originalDocument.Rows[0]["enumSet"] as List<string>, copiedDocument.Rows[0]["enumSet"] as List<string>);
@@ -236,22 +229,21 @@ public class CodeListTest : IClassFixture<AssetsFixture>
     }
 
     [Fact]
-    public async Task SaveAsMetaOnly_Creates_Equivalent_Meta_Document()
+    public async Task SaveAsMetaOnly_FileRoundtrip_PreservesMetadata()
     {
         var originalDocument = await CodeListDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelist.meta.json"), 
+            TestAssets.GetPath("codelist.meta.json"), 
             TestContext.Current.CancellationToken);
 
         var templateDocument = await CodeListDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelist.json"), 
+            TestAssets.GetPath("codelist.json"), 
             TestContext.Current.CancellationToken);
 
-        await templateDocument.SaveAsMetaOnlyAsync(
-            Path.Combine(_assetsFolder, "codelist.meta.copy.json"), 
-            TestContext.Current.CancellationToken);
+        using var file = new TemporaryFile();
+        await templateDocument.SaveAsMetaOnlyAsync(file.FilePath, TestContext.Current.CancellationToken);
 
         var copiedDocument = await CodeListDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelist.meta.copy.json"), 
+            file.FilePath,
             TestContext.Current.CancellationToken);
 
         Assert.True(originalDocument.MetaOnly);

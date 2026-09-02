@@ -5,6 +5,7 @@
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
  *    Licensed under the MIT License.
+ *    
  */
 #endregion
 
@@ -17,16 +18,16 @@ namespace OpenCodeList.XUnit;
 /// <summary>
 /// Unit tests for the <see cref="LocalizableString"/> class.
 /// </summary>
-public class LocalizableStringTest
+public class LocalizableStringTests
 {
     [Fact]
-    public void Converter_Rejects_Non_String_And_Non_Object_Value()
+    public void Converter_NonStringAndNonObjectValue_Throws()
     {
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<LocalizableString>("42"));
     }
 
     [Fact]
-    public void LocalizedString_AddValue_And_GetValue_Work()
+    public void LocalizedString_AddAndGetValue_Works()
     {
         var value = LocalizedString.Create()
             .AddValue("en", "Hello")
@@ -35,11 +36,10 @@ public class LocalizableStringTest
         Assert.Equal("Hello", value.GetValue("en"));
         Assert.Equal("Hallo", value.GetValue("de"));
         Assert.Null(value.GetValue("fr"));
-        Assert.Null(value.GetValue());
     }
 
     [Fact]
-    public void LocalizedString_Serializes_As_Language_Object()
+    public void LocalizedString_Serialization_UsesLanguageObject()
     {
         LocalizableString value = new LocalizedString(new Dictionary<string, string>
         {
@@ -55,7 +55,7 @@ public class LocalizableStringTest
     }
 
     [Fact]
-    public void NonLocalizedString_Serializes_As_Json_String()
+    public void NonLocalizedString_Serialization_UsesJsonString()
     {
         LocalizableString value = NonLocalizedString.Create("Hello");
 

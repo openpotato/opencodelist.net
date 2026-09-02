@@ -9,6 +9,7 @@
  */
 #endregion
 
+using FluentValidation.TestHelper;
 using System.IO;
 using System.Threading.Tasks;
 using Xunit;
@@ -18,33 +19,27 @@ namespace OpenCodeList.XUnit;
 /// <summary>
 /// Unit tests for <see cref="CodeListSetDocument"/>.
 /// </summary>
-public class CodeListSetTest : IClassFixture<AssetsFixture>
+public class CodeListSetDocumentTests
 {
-    private readonly string _assetsFolder;
-
-    public CodeListSetTest(AssetsFixture _)
-    {
-        _assetsFolder = AssetsFixture.GetAssetsFolder();
-    }
 
     [Fact]
-    public async Task Load_Meta_Document_Without_ReferenceSet()
+    public async Task Load_MetaAsset_HasNoReferences()
     {
         var document = await CodeListSetDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelistset.meta.json"),
+            TestAssets.GetPath("codelistset.meta.json"),
             TestContext.Current.CancellationToken);
 
-        document.Validate();
+        new CodeListSetDocumentValidator().TestValidate(document).ShouldNotHaveAnyValidationErrors();
 
         Assert.True(document.MetaOnly);
         Assert.Empty(document.DocumentRefs);
     }
 
     [Fact]
-    public async Task Load_Reads_All_Expected_Document_Values()
+    public async Task Load_Asset_ReadsExpectedValues()
     {
        var document = await CodeListSetDocument.LoadAsync(
-           Path.Combine(_assetsFolder, "codelistset.json"), 
+           TestAssets.GetPath("codelistset.json"), 
            TestContext.Current.CancellationToken);
 
         Assert.NotNull(document);
@@ -65,18 +60,17 @@ public class CodeListSetTest : IClassFixture<AssetsFixture>
         Assert.IsType<ExternalCodeListSetDocumentRef>(document.DocumentRefs[1]);
     }
     [Fact]
-    public async Task Save_Writes_And_Loads_Equivalent_Document()
+    public async Task Save_FileRoundtrip_PreservesDocument()
     {
         var originalDocument = await CodeListSetDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelistset.json"), 
+            TestAssets.GetPath("codelistset.json"), 
             TestContext.Current.CancellationToken);
 
-        await originalDocument.SaveAsync(
-            Path.Combine(_assetsFolder, "codelistset.copy.json"),
-            TestContext.Current.CancellationToken);
+        using var file = new TemporaryFile();
+        await originalDocument.SaveAsync(file.FilePath, TestContext.Current.CancellationToken);
 
         var copiedDocument = await CodeListSetDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelistset.copy.json"), 
+            file.FilePath,
             TestContext.Current.CancellationToken);
 
         Assert.False(originalDocument.MetaOnly);
@@ -88,10 +82,10 @@ public class CodeListSetTest : IClassFixture<AssetsFixture>
     }
 
     [Fact]
-    public async Task SaveAsMetaOnly_Writes_Document_That_Can_Be_Loaded()
+    public async Task SaveAsMetaOnly_StreamRoundtrip_ProducesValidMetaDocument()
     {
         var originalDocument = await CodeListSetDocument.LoadAsync(
-            Path.Combine(_assetsFolder, "codelistset.json"),
+            TestAssets.GetPath("codelistset.json"),
             TestContext.Current.CancellationToken);
 
         await using var stream = new MemoryStream();
@@ -99,7 +93,7 @@ public class CodeListSetTest : IClassFixture<AssetsFixture>
         stream.Position = 0;
 
         var metaDocument = await CodeListSetDocument.LoadAsync(stream, TestContext.Current.CancellationToken);
-        metaDocument.Validate();
+        new CodeListSetDocumentValidator().TestValidate(metaDocument).ShouldNotHaveAnyValidationErrors();
 
         Assert.True(metaDocument.MetaOnly);
         Assert.Empty(metaDocument.DocumentRefs);

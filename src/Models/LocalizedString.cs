@@ -49,16 +49,22 @@ public sealed class LocalizedString : LocalizableString
     public IDictionary<string, string> Values { get; }
 
     /// <summary>
-    /// Gets the value for the specified language.
+    /// Creates a new language-neutral string.
     /// </summary>
-    public string GetValue(string language = null)
+    /// <returns>The newly created <see cref="LocalizedString"/> instance.</returns>
+    public static LocalizedString Create()
     {
-        if (language is null)
-        {
-            return null;
-        }
+        return new LocalizedString();
+    }
 
-        return Values!.TryGetValue(language, out var value) ? value : null;
+    /// <summary>
+    /// Creates a new language-neutral string.
+    /// </summary>
+    /// <param name="values">The language-specific values to initialize the string with.</param>
+    /// <returns>The newly created <see cref="LocalizedString"/> instance.</returns>
+    public static LocalizedString Create(IDictionary<string, string> values)
+    {
+        return new LocalizedString(values);
     }
 
     /// <summary>
@@ -74,11 +80,15 @@ public sealed class LocalizedString : LocalizableString
     }
 
     /// <summary>
-    /// Creates a new language-neutral string.
+    /// Gets the value for the specified language.
     /// </summary>
-    /// <returns>The newly created <see cref="LocalizedString"/> instance.</returns>
-    public static LocalizedString Create()
+    public string GetValue(string language)
     {
-        return new LocalizedString();
+        if (language is null)
+        {
+            return null;
+        }
+
+        return Values!.TryGetValue(language, out var value) ? value : null;
     }
 }

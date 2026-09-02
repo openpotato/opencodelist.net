@@ -10,6 +10,7 @@
 #endregion
 
 using Enbrea.SemVer;
+using FluentValidation.Results;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -27,30 +28,28 @@ public abstract class CodeListBase
     internal static readonly JsonSerializerOptions JsonSerializerOptions = new() { AllowOutOfOrderMetadataProperties = true };
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CodeListBase"/> class.
-    /// </summary>
-    public CodeListBase()
-    {
-        Identification = new Identification();
-    }
-
-    /// <summary>
     /// Returns the implemented OpenCodeList version.
     /// </summary>
-    /// <returns>An OpenCodeList version</returns>
+    /// <returns>A semantic version</returns>
     public static SemanticVersion ImplementedVersion { get; } = new(0, 4, 0, null);
 
     /// <summary>
     /// Returns the minimum compatible OpenCodeList version.
     /// </summary>
-    /// <returns>An OpenCodeList version</returns>
+    /// <returns>A semantic version</returns>
     public static SemanticVersion MinimumCompatibleVersion { get; } = new(0, 4, 0, null);
 
     /// <summary>
     /// Returns the supported OpenCodeList version range.
     /// </summary>
-    /// <returns>A SemanticVersionRange representing the supported version range</returns>
+    /// <returns>A semantic version range representing the supported version range.</returns>
     public static SemanticVersionRange SupportedVersionRange { get; } = new(MinimumCompatibleVersion, true, new SemanticVersion(0, 5, 0, null), false);
+
+    /// <summary>
+    /// Returns the implemented OpenCodeList version as string.
+    /// </summary>
+    /// <returns>The implemented OpenCodeList version as string</returns>
+    public static string Version { get; } = ImplementedVersion.ToString();
 
     /// <summary>
     /// Annotations for the document.
@@ -60,12 +59,12 @@ public abstract class CodeListBase
     /// <summary>
     /// Comments for the document.
     /// </summary>
-    public IList<string> Comments { get; internal set; } = [];
+    public IList<string> Comments { get; } = [];
 
     /// <summary>
     /// Meta information about the document.
     /// </summary>
-    public Identification Identification { get; internal set; }
+    public Identification Identification { get; internal set; } = new Identification();
 
     /// <summary>
     /// TRUE, if this document is a meta document
@@ -73,23 +72,18 @@ public abstract class CodeListBase
     public bool MetaOnly { get; internal set; }
 
     /// <summary>
-    /// The implemented OpenCodeList version as string
-    /// </summary>
-    public string Version { get; } = ImplementedVersion.ToString();
-
-    /// <summary>
-    /// Clears the metadata and content of this document instance
+    /// Clears the metadata and content of this document instance.
     /// </summary>
     public virtual void Clear()
     {
         Annotation = null;
-        Comments.Clear();
-        Identification = new Identification();
+        Comments?.Clear();
+        Identification.Clear();
         ClearContent(false);
     }
 
     /// <summary>
-    /// Clears only the content of this document instance
+    /// Clears only the content of this document instance.
     /// </summary>
     /// <param name="convertToMetaOnly">If TRUE, marks document as meta document</param>
     public virtual void ClearContent(bool convertToMetaOnly)
@@ -390,5 +384,6 @@ public abstract class CodeListBase
     /// <summary>
     /// Validates this document according to the OpenCodeList JSON schema specification.
     /// </summary>
-    public abstract void Validate();
+    /// <returns>A <see cref="ValidationResult"/> representing the result of the validation.</returns>  
+    public abstract ValidationResult Validate();
 }

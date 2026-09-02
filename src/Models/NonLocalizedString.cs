@@ -20,7 +20,7 @@ public sealed class NonLocalizedString : LocalizableString
     /// Initializes a new instance of the <see cref="NonLocalizedString"/> class.
     /// </summary>
     /// <param name="value">The language-neutral value.</param>
-    public NonLocalizedString(string value = null)
+    public NonLocalizedString(string value)
     {
         Value = value;
     }

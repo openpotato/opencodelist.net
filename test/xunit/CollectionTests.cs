@@ -5,6 +5,7 @@
  *    Copyright (c) STÜBER SYSTEMS GmbH
  *
  *    Licensed under the MIT License.
+ *    
  */
 #endregion
 
@@ -14,40 +15,40 @@ using Xunit;
 namespace OpenCodeList.XUnit;
 
 /// <summary>
-/// Tests for collection behavior of the OpenCodeList.NET model classes.
+/// Tests for collection behavior of the model classes.
 /// </summary>
-public class CollectionTest
+public class CollectionTests
 {
     [Fact]
-    public void ColumnRefs_Reject_Column_From_Another_Document()
+    public void ColumnRefs_ColumnFromAnotherDocument_Throws()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
-        var otherDocument = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
+        var otherDocument = TestDocumentFactory.CreateCodeList();
 
         Assert.Throws<ArgumentException>(() => document.Keys[0].Columns.Add(otherDocument.Columns[0]));
     }
 
     [Fact]
-    public void DefaultKey_Rejects_Key_From_Another_Document()
+    public void DefaultKey_KeyFromAnotherDocument_Throws()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
-        var otherDocument = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
+        var otherDocument = TestDocumentFactory.CreateCodeList();
 
         Assert.Throws<ArgumentException>(() => document.DefaultKey = otherDocument.Keys[0]);
     }
 
     [Fact]
-    public void Removing_Column_From_Filled_Document_Is_Rejected()
+    public void RemoveColumn_FilledDocument_Throws()
     {
-        var document = TestDocumentFactory.CreateValidCodeList(addRow: true);
+        var document = TestDocumentFactory.CreateCodeList(addRow: true);
 
         Assert.Throws<InvalidOperationException>(() => document.Columns.Remove(document.Columns[0]));
     }
 
     [Fact]
-    public void Removing_Default_Key_Clears_DefaultKey()
+    public void RemoveDefaultKey_ClearsDefaultKey()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
         var key = document.DefaultKey;
 
         Assert.True(document.Keys.Remove(key));
@@ -55,9 +56,9 @@ public class CollectionTest
     }
 
     [Fact]
-    public void Removing_Referenced_Column_Removes_Key_And_ForeignKey_When_Document_Is_Empty()
+    public void RemoveReferencedColumn_EmptyDocument_RemovesKeyAndForeignKey()
     {
-        var document = TestDocumentFactory.CreateValidCodeList();
+        var document = TestDocumentFactory.CreateCodeList();
         var codeColumn = document.Columns["code"];
 
         var foreignKey = document.ForeignKeys.Add();
@@ -74,8 +75,8 @@ public class CollectionTest
 
         document.Columns.Remove(codeColumn);
 
-        Assert.Equal(0, document.Keys.Count);
-        Assert.Equal(0, document.ForeignKeys.Count);
-        Assert.Equal(0, document.Columns.Count);
+        Assert.Empty(document.Keys);
+        Assert.Empty(document.ForeignKeys);
+        Assert.Empty(document.Columns);
     }
 }

@@ -75,9 +75,9 @@ public sealed class Keys : Owned<CodeListDocument>, IEnumerable<Key>
     /// <returns>the new <see cref="Key"/> instance</returns>
     public Key Add()
     {
-        var row = new Key(Owner);
-        _keys.Add(row);
-        return row;
+        var key = new Key(Owner);
+        _keys.Add(key);
+        return key;
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public sealed class Keys : Owned<CodeListDocument>, IEnumerable<Key>
     /// </summary>
     public void Clear()
     {
-        if (Owner.DefaultKey != null && _keys.Contains(Owner.DefaultKey))
+        if (Owner.DefaultKey is not null && _keys.Contains(Owner.DefaultKey))
         {
             Owner.DefaultKey = null;
         }
